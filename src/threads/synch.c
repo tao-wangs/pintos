@@ -27,6 +27,7 @@
 */
 
 #include "threads/synch.h"
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include "threads/interrupt.h"
@@ -101,13 +102,11 @@ sema_try_down (struct semaphore *sema)
   return success;
 }
 
-/* Up or "V" operation on a semaphore.  Increments SEMA's value
-   and wakes up one thread of those waiting for SEMA, if any.
+#define MIN(x, y) x < y ? y : x
 
-   This function may be called from an interrupt handler. */
-void
-sema_up (struct semaphore *sema) 
-{
+/* Acts like "V", but will not increment above max. */
+static void
+sema_up_max (struct semaphore *sema, int64_t max) {
   enum intr_level old_level;
 
   ASSERT (sema != NULL);
@@ -116,8 +115,25 @@ sema_up (struct semaphore *sema)
   if (!list_empty (&sema->waiters)) 
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
-  sema->value++;
+  sema->value = MIN(sema->value + 1, max);
   intr_set_level (old_level);
+}
+
+/* Up or "V" operation on a semaphore.  Increments SEMA's value
+   and wakes up one thread of those waiting for SEMA, if any.
+
+   This function may be called from an interrupt handler. */
+void
+sema_up (struct semaphore *sema) 
+{
+  sema_up_max(sema, INT_MAX);
+}
+
+/* Binary up. Acts like "V", but will not increment value above 1. */
+void
+sema_bin_up (struct semaphore *sema)
+{
+  sema_up_max(sema, 1);
 }
 
 static void sema_test_helper (void *sema_);

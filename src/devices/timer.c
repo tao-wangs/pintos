@@ -24,11 +24,24 @@ static int64_t ticks;
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
+/* Wraps a thread and time to unblock it */
+struct sleeping_thread
+  {
+    struct list_elem elem;
+    int64_t end_time;
+    struct semaphore sema;
+  };
+
+static struct list sleeping_threads;
+static struct lock sleeping_threads_lock;
+static struct semaphore wake_threads_sema;
+
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+static void wake_threads (void *aux);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -37,6 +50,10 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init (&sleeping_threads);
+  thread_create ("WakeThread", PRI_MAX, wake_threads, NULL);
+  lock_init (&sleeping_threads_lock);
+  sema_init (&wake_threads_sema, 0);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -84,16 +101,58 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
+static bool
+sleeping_thread_less(const struct list_elem *a,
+                     const struct list_elem *b,
+                     void *aux)
+{
+  struct sleeping_thread *x = list_entry (a, struct sleeping_thread, elem);
+  struct sleeping_thread *y = list_entry (b, struct sleeping_thread, elem);
+  return x->end_time < y->end_time;
+}
+
+static void
+wake_threads (void *aux)
+{
+  while (1) {
+    sema_down (&wake_threads_sema); 
+    if (list_empty (&sleeping_threads)) 
+      continue;
+    int64_t time = timer_ticks ();
+    lock_acquire (&sleeping_threads_lock);
+    while (!list_empty (&sleeping_threads))
+    {
+      struct list_elem *e = list_pop_front (&sleeping_threads);
+      if (!e)
+        continue;
+      struct sleeping_thread *s = list_entry (e, struct sleeping_thread, elem);
+      if (!s)
+        continue;
+      if (s->end_time <= time)
+        sema_up (&s->sema);
+      else
+      {
+        list_push_front (&sleeping_threads, e);
+        break;
+      }
+    }
+    lock_release (&sleeping_threads_lock);
+  }
+}
+
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  struct sleeping_thread sleeper;
+  sleeper.end_time = timer_ticks () + ticks;
+  sema_init (&sleeper.sema, 0);
+  lock_acquire (&sleeping_threads_lock);
+  list_insert_ordered (&sleeping_threads, &sleeper.elem, sleeping_thread_less, NULL);
+  lock_release (&sleeping_threads_lock);
+  sema_down (&sleeper.sema);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -165,13 +224,14 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  sema_bin_up (&wake_threads_sema);  
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
