@@ -102,7 +102,7 @@ sema_try_down (struct semaphore *sema)
   return success;
 }
 
-#define MIN(x, y) x < y ? y : x
+#define MIN(x, y) x < y ? x : y
 
 /* Acts like "V", but will not increment above max. */
 static void
@@ -113,7 +113,7 @@ sema_up_max (struct semaphore *sema, int64_t max) {
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
+    thread_unblock (list_entry (list_pop_max (&sema->waiters, compare_priority, NULL),
                                 struct thread, elem));
   sema->value = MIN(sema->value + 1, max);
   intr_set_level (old_level);
