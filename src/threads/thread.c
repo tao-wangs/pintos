@@ -632,9 +632,9 @@ compare_priority_semaphore_elems (const struct list_elem *a, const struct list_e
 	struct semaphore semaphore_of_b = list_entry(b, struct semaphore_elem, elem)->semaphore;
 	struct list waiters_of_a = semaphore_of_a.waiters;
 	struct list waiters_of_b = semaphore_of_b.waiters;
-	struct thread *thread_of_max_priority_of_a = list_entry(list_pop_max (&waiters_of_a, compare_priority, NULL),
+	struct thread *thread_of_max_priority_of_a = list_entry(list_max (&waiters_of_a, compare_priority, NULL),
 																									struct thread, elem);
-	struct thread *thread_of_max_priority_of_b = list_entry(list_pop_max (&waiters_of_b, compare_priority, NULL),
+	struct thread *thread_of_max_priority_of_b = list_entry(list_max (&waiters_of_b, compare_priority, NULL),
 																									struct thread, elem);
 	return thread_of_max_priority_of_a->priority < thread_of_max_priority_of_b->priority;
 																									
