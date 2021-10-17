@@ -362,17 +362,20 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
-{
-  /* Not yet implemented. */
+thread_set_nice (int new_nice) 
+{ 
+  ASSERT (new_nice >= NICE_MIN && new_nice <= NICE_MAX);
+  
+  thread_current ()->nice = new_nice;
+  /*Then need to recalculate the thread's priority based on the new value.
+  If the running thread no longer has the highest priority, yields.*/
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
 /* Returns 100 times the system load average. */
