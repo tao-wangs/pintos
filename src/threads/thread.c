@@ -10,10 +10,12 @@
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
+// #include "threads/synch.c"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -621,4 +623,19 @@ bool
 compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
   return list_entry(a, struct thread, elem)->priority < list_entry(b, struct thread, elem)->priority;
+}
+
+bool
+compare_priority_semaphore_elems (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+	struct semaphore semaphore_of_a = list_entry(a, struct semaphore_elem, elem)->semaphore;
+	struct semaphore semaphore_of_b = list_entry(b, struct semaphore_elem, elem)->semaphore;
+	struct list waiters_of_a = semaphore_of_a.waiters;
+	struct list waiters_of_b = semaphore_of_b.waiters;
+	struct thread *thread_of_max_priority_of_a = list_entry(list_pop_max (&waiters_of_a, compare_priority, NULL),
+																									struct thread, elem);
+	struct thread *thread_of_max_priority_of_b = list_entry(list_pop_max (&waiters_of_b, compare_priority, NULL),
+																									struct thread, elem);
+	return thread_of_max_priority_of_a->priority < thread_of_max_priority_of_b->priority;
+																									
 }

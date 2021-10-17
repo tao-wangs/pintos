@@ -333,7 +333,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
 
   if (!list_empty (&cond->waiters)) 
-    sema_up (&list_entry (list_pop_front (&cond->waiters),
+    sema_up (&list_entry (list_pop_max (&cond->waiters, compare_priority_semaphore_elems, NULL),
                           struct semaphore_elem, elem)->semaphore);
 }
 
