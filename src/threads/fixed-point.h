@@ -33,9 +33,19 @@ static inline fp fp_add(fp x, fp y){
   return x + y;
 }
 
+//add an integer to a fp number 
+static inline fp fp_add_int(fp x, int32_t n) {
+  return x + n * F_MULTI;
+}
+
 //subtract an fp number from another
 static inline fp fp_sub(fp x, fp y){
   return x - y;
+}
+
+//subtract an integer from a fp number
+static inline fp fp_sub_int(fp x, int32_t n) {
+  return x - n * F_MULTI;
 }
 
 //multiply two fp numbers
@@ -43,7 +53,17 @@ static inline fp fp_multi(fp x, fp y){
   return ((int64_t) x) * y / F_MULTI;
 }
 
+//multiply a fp number by an integer
+static inline fp fp_multi_int(fp x, int32_t n) {
+  return x * n;
+}
+
 //divide two fp numbers
 static inline fp fp_divide(fp x, fp y){
   return ((int64_t) x) * F_MULTI / y;
+}
+
+//divide a fp number by an integer
+static inline fp fp_divide_int(fp x, int32_t n) {
+  return x / n;
 }
