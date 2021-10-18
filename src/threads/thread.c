@@ -38,6 +38,8 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+static fp load_avg;
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
@@ -99,6 +101,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+  load_avg = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -383,16 +387,14 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fp_to_i_nearest(fp_multi_int(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fp_to_i_nearest(fp_multi_int(running_thread ()->cpu_recent, 100)); 
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
