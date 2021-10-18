@@ -394,7 +394,7 @@ thread_get_load_avg (void)
 int
 thread_get_recent_cpu (void) 
 {
-  return fp_to_i_nearest(fp_multi_int(running_thread ()->cpu_recent, 100)); 
+  return fp_to_i_nearest(fp_multi_int(running_thread ()->recent_cpu, 100)); 
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
