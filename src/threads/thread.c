@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <stddef.h>
 #include <random.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include "threads/flags.h"
@@ -218,6 +219,8 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
+  list_init(&t->priority_list);
+  list_push_back(&t->base_priority_elem);
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -365,12 +368,70 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+
+static struct thread *
+highest_donator (struct thread * t)
+{
+  return list_entry (list_begin (&t->priority_list), struct thread, priority_elem);
+}
+
+void
+thread_donate (struct thread *source, struct thread *dest)
+{
+  source->donated_to = dest;
+  lock_acquire (&dest->priority_list_lock);
+  list_insert_ordered (&dest->priority_list, &source->priority_elem, compare_priority, NULL);
+  lock_release (&dest->priority_list_lock);
+  if (source == highest_donator (dest))
+    thread_update_donation (dest);
+}
+
+void
+thread_update_donation (struct thread *t)
+{
+  if (t->donated_to)
+    {
+      lock_acquire (&t->donated_to->priority_list_lock);
+      list_remove (&t->priority_elem);
+      list_insert_ordered (&t->donated_to->priority_list, &t->priority_elem, compare_priority, NULL);
+      lock_release (&t->donated_to->priority_list_lock);
+      if (source == highest_donator (t->donated_to))
+        thread_update_donation (t->donated_to);
+    }
+}
+
+void 
+thread_remove_donation (struct thread *t)
+{
+  bool was_highest = t == highest_donator (t->donated_to);
+  lock_acquire (&t->donated_to->priority_list_lock);
+  list_remove (&t->priority_elem);
+  lock_release (&t->donated_to->priority_list_lock);
+  if (was_highest)
+    thread_update_donation (t->donated_to);
+  t->donated_to = NULL;
+}
+
+static void
+thread_update_priority (struct thread *t)
+{
+  lock_acquire (&t->priority_list_lock);
+  list_remove(&t->base_priority_elem);
+  list_insert_ordered (&t->priority_list, compare_priority, NULL);
+  lock_release (&t->priority_list_lock);
+  if (t->donated_to)
+    thread_update_donation (t->donated_to);  
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  if (new_priority < list_entry(list_max(&ready_list, compare_priority, NULL), struct thread, elem)->priority)
+  thread_update_priority (thread_current ());
+  struct thread *max_priority_ready = list_entry (list_max (&ready_list, compare_priority, NULL),
+                                                  struct thread, elem);
+  if (thread_get_priority () < thread_get_effective_priority (max_priority_ready))
     thread_yield ();
 }
 
@@ -378,7 +439,16 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  return thread_get_effective_priority (thread_current ());
+}
+
+static int
+thread_get_effective_priority (struct thread *t)
+{
+  struct thread *highest_priority = highest_donator (t);
+  if (t == highest_priority) 
+    return t->priority; 
+  return thread_get_effective_priority (highest_priority);
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -622,7 +692,8 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 bool 
 compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
-  return list_entry(a, struct thread, elem)->priority < list_entry(b, struct thread, elem)->priority;
+  return thread_get_effective_priority (list_entry(a, struct thread, elem)) <
+         thread_get_effective_priority (list_entry(b, struct thread, elem));
 }
 
 bool
@@ -636,6 +707,7 @@ compare_priority_semaphore_elems (const struct list_elem *a, const struct list_e
 																									struct thread, elem);
 	struct thread *thread_of_max_priority_of_b = list_entry(list_max (waiters_of_b, compare_priority, NULL),
 																									struct thread, elem);
-	return thread_of_max_priority_of_a->priority < thread_of_max_priority_of_b->priority;
+	return thread_get_effective_priority (thread_of_max_priority_of_a) <
+           thread_get_effective_priority (thread_of_max_priority_of_b);
 																									
 }

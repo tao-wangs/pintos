@@ -93,6 +93,12 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    struct list priority_list;             /* List donated priorities. */
+    struct list_elem base_priority_elem;
+    struct list_elem priority_elem;
+    struct thread *donated_to;            /* The list this thread has donated to. */
+    struct lock priority_list_lock;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -133,6 +139,11 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+int thread_get_effective_priority (struct thread *);
+
+void thread_donate (struct thread *, struct thread *);
+void thread_update_donation (struct thread *);
+void thread_remove_donation (struct thread *);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
