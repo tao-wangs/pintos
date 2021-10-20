@@ -104,7 +104,7 @@ timer_elapsed (int64_t then)
 static bool
 sleeping_thread_less(const struct list_elem *a,
                      const struct list_elem *b,
-                     void *aux)
+                     void *aux UNUSED)
 {
   struct sleeping_thread *x = list_entry (a, struct sleeping_thread, elem);
   struct sleeping_thread *y = list_entry (b, struct sleeping_thread, elem);
@@ -112,7 +112,7 @@ sleeping_thread_less(const struct list_elem *a,
 }
 
 static void
-wake_threads (void *aux)
+wake_threads (void *aux UNUSED)
 {
   while (1) {
     sema_down (&wake_threads_sema); 
