@@ -11,7 +11,6 @@
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
-// #include "threads/synch.c"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
 #ifdef USERPROG
@@ -220,18 +219,11 @@ thread_create (const char *name, int priority,
   intr_set_level (old_level);
 
   list_init(&t->priority_list);
-  list_push_back(&t->base_priority_elem);
+  list_push_back(&t->priority_list, &t->base_priority_elem);
   /* Add to run queue. */
   thread_unblock (t);
 
   return tid;
-}
-
-static void
-print_priority (struct thread *t, void *aux UNUSED)
-{
-  if (t->status == THREAD_READY)
-    printf("Thread %s has priority %d\n", t->name, t->priority);
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -270,7 +262,7 @@ thread_unblock (struct thread *t)
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
-  if (t->priority > thread_current ()->priority)
+  if (thread_get_effective_priority (t) > thread_get_priority ())
   {
     if (intr_context ())
       intr_yield_on_return ();
@@ -395,7 +387,7 @@ thread_update_donation (struct thread *t)
       list_remove (&t->priority_elem);
       list_insert_ordered (&t->donated_to->priority_list, &t->priority_elem, compare_priority, NULL);
       lock_release (&t->donated_to->priority_list_lock);
-      if (source == highest_donator (t->donated_to))
+      if (t == highest_donator (t->donated_to))
         thread_update_donation (t->donated_to);
     }
 }
@@ -417,7 +409,7 @@ thread_update_priority (struct thread *t)
 {
   lock_acquire (&t->priority_list_lock);
   list_remove(&t->base_priority_elem);
-  list_insert_ordered (&t->priority_list, compare_priority, NULL);
+  list_insert_ordered (&t->priority_list, &t->base_priority_elem, compare_priority, NULL);
   lock_release (&t->priority_list_lock);
   if (t->donated_to)
     thread_update_donation (t->donated_to);  
@@ -442,7 +434,7 @@ thread_get_priority (void)
   return thread_get_effective_priority (thread_current ());
 }
 
-static int
+int
 thread_get_effective_priority (struct thread *t)
 {
   struct thread *highest_priority = highest_donator (t);
