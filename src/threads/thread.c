@@ -101,6 +101,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  list_init (&initial_thread->priority_list);
+  lock_init (&initial_thread->priority_list_lock);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -218,8 +220,8 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
-  list_init(&t->priority_list);
-  list_push_back(&t->priority_list, &t->base_priority_elem);
+  list_init (&t->priority_list);
+  lock_init (&t->priority_list_lock);
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -372,7 +374,7 @@ thread_donate (struct thread *source, struct thread *dest)
 {
   source->donated_to = dest;
   lock_acquire (&dest->priority_list_lock);
-  list_insert_ordered (&dest->priority_list, &source->priority_elem, compare_priority, NULL);
+  list_insert_ordered (&dest->priority_list, &source->priority_elem, compare_priority_priority_elem, NULL);
   lock_release (&dest->priority_list_lock);
   if (source == highest_donator (dest))
     thread_update_donation (dest);
@@ -385,7 +387,7 @@ thread_update_donation (struct thread *t)
     {
       lock_acquire (&t->donated_to->priority_list_lock);
       list_remove (&t->priority_elem);
-      list_insert_ordered (&t->donated_to->priority_list, &t->priority_elem, compare_priority, NULL);
+      list_insert_ordered (&t->donated_to->priority_list, &t->priority_elem, compare_priority_priority_elem, NULL);
       lock_release (&t->donated_to->priority_list_lock);
       if (t == highest_donator (t->donated_to))
         thread_update_donation (t->donated_to);
@@ -407,10 +409,6 @@ thread_remove_donation (struct thread *t)
 static void
 thread_update_priority (struct thread *t)
 {
-  lock_acquire (&t->priority_list_lock);
-  list_remove(&t->base_priority_elem);
-  list_insert_ordered (&t->priority_list, &t->base_priority_elem, compare_priority, NULL);
-  lock_release (&t->priority_list_lock);
   if (t->donated_to)
     thread_update_donation (t->donated_to);  
 }
@@ -419,12 +417,16 @@ thread_update_priority (struct thread *t)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-  thread_update_priority (thread_current ());
-  struct thread *max_priority_ready = list_entry (list_max (&ready_list, compare_priority, NULL),
-                                                  struct thread, elem);
-  if (thread_get_priority () < thread_get_effective_priority (max_priority_ready))
-    thread_yield ();
+  struct thread *cur = thread_current ();
+  cur->priority = new_priority;
+  thread_update_priority (cur);
+  if (!list_empty (&ready_list))
+  {
+    struct thread *max_priority_ready = list_entry (list_max (&ready_list, compare_priority, NULL),
+                                                    struct thread, elem);
+    if (thread_get_priority () < thread_get_effective_priority (max_priority_ready))
+      thread_yield ();
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -434,13 +436,15 @@ thread_get_priority (void)
   return thread_get_effective_priority (thread_current ());
 }
 
+#define MAX(x, y) x < y ? y : x
+
 int
 thread_get_effective_priority (struct thread *t)
 {
+  if (list_empty (&t->priority_list))
+    return t->priority;
   struct thread *highest_priority = highest_donator (t);
-  if (t == highest_priority) 
-    return t->priority; 
-  return thread_get_effective_priority (highest_priority);
+  return MAX(t->priority, thread_get_effective_priority (highest_priority));
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -686,6 +690,13 @@ compare_priority (const struct list_elem *a, const struct list_elem *b, void *au
 {
   return thread_get_effective_priority (list_entry(a, struct thread, elem)) <
          thread_get_effective_priority (list_entry(b, struct thread, elem));
+}
+
+bool
+compare_priority_priority_elem (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  return thread_get_effective_priority (list_entry(a, struct thread, priority_elem)) >
+         thread_get_effective_priority (list_entry(b, struct thread, priority_elem));
 }
 
 bool

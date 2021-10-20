@@ -95,7 +95,6 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     struct list priority_list;             /* List donated priorities. */
-    struct list_elem base_priority_elem;
     struct list_elem priority_elem;
     struct thread *donated_to;            /* The list this thread has donated to. */
     struct lock priority_list_lock;
@@ -154,5 +153,8 @@ int thread_get_load_avg (void);
 bool compare_priority (const struct list_elem *a,
                        const struct list_elem *b,
                        void *aux);
+bool compare_priority_priority_elem (const struct list_elem *a,
+                                     const struct list_elem *b,
+                                     void *aux);
 bool compare_priority_semaphore_elems (const struct list_elem *a, const struct list_elem *b, void *aux);
 #endif /* threads/thread.h */
