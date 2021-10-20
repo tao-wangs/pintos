@@ -147,6 +147,10 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+bool compare_priority (const struct list_elem *a,
+                       const struct list_elem *b,
+                       void *aux);
+bool compare_priority_semaphore_elems (const struct list_elem *a, const struct list_elem *b, void *aux);
 bool thread_has_highest_priority(int curr_pri);
 void update_load_avg(void);
 void update_recent_cpu(struct thread *t, void *aux UNUSED);

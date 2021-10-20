@@ -102,7 +102,7 @@ sema_try_down (struct semaphore *sema)
   return success;
 }
 
-#define MIN(x, y) x < y ? y : x
+#define MIN(x, y) x < y ? x : y
 
 /* Acts like "V", but will not increment above max. */
 static void
@@ -112,10 +112,10 @@ sema_up_max (struct semaphore *sema, int64_t max) {
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
   sema->value = MIN(sema->value + 1, max);
+  if (!list_empty (&sema->waiters)) 
+    thread_unblock (list_entry (list_pop_max (&sema->waiters, compare_priority, NULL),
+                                struct thread, elem));
   intr_set_level (old_level);
 }
 
@@ -261,13 +261,6 @@ lock_held_by_current_thread (const struct lock *lock)
 
   return lock->holder == thread_current ();
 }
-
-/* One semaphore in a list. */
-struct semaphore_elem 
-  {
-    struct list_elem elem;              /* List element. */
-    struct semaphore semaphore;         /* This semaphore. */
-  };
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -333,7 +326,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
 
   if (!list_empty (&cond->waiters)) 
-    sema_up (&list_entry (list_pop_front (&cond->waiters),
+    sema_up (&list_entry (list_pop_max (&cond->waiters, compare_priority_semaphore_elems, NULL),
                           struct semaphore_elem, elem)->semaphore);
 }
 

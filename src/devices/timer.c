@@ -41,7 +41,6 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
-static void wake_threads (void *aux);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -51,7 +50,6 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init (&sleeping_threads);
-  thread_create ("WakeThread", PRI_MAX, wake_threads, NULL);
   lock_init (&sleeping_threads_lock);
   sema_init (&wake_threads_sema, 0);
 }
@@ -111,8 +109,8 @@ sleeping_thread_less(const struct list_elem *a,
   return x->end_time < y->end_time;
 }
 
-static void
-wake_threads (void *aux UNUSED)
+void
+timer_wake_threads (void *aux UNUSED)
 {
   while (1) {
     sema_down (&wake_threads_sema); 
@@ -231,7 +229,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  sema_bin_up (&wake_threads_sema);  
+  if (!list_empty (&sleeping_threads))
+    sema_bin_up (&wake_threads_sema);  
 
   // Every time a timer interrupt occurs, recent_cpu is incremented by 1  
   thread_current ()->recent_cpu++;
@@ -242,7 +241,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     thread_foreach (update_recent_cpu, 0);
   }
 
-  if (timer_ticks() % 4 == 0) {
+  if (timer_ticks() % 4 == 0 && thread_mlfqs) {
     thread_foreach (update_priority, 0);
   }
 }

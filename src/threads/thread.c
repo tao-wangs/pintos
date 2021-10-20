@@ -10,9 +10,12 @@
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
+// #include "threads/synch.c"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -119,6 +122,8 @@ thread_start (void)
 
   /* Wait for the idle thread to initialize idle_thread. */
   sema_down (&idle_started);
+
+  thread_create("wake", PRI_MAX, timer_wake_threads, NULL);
 }
 
 /* Returns the number of threads currently in the ready list */
@@ -224,6 +229,13 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
+static void
+print_priority (struct thread *t, void *aux UNUSED)
+{
+  if (t->status == THREAD_READY)
+    printf("Thread %s has priority %d\n", t->name, t->priority);
+}
+
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -260,6 +272,13 @@ thread_unblock (struct thread *t)
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+  if (t->priority > thread_current ()->priority)
+  {
+    if (intr_context ())
+      intr_yield_on_return ();
+    else
+      thread_yield ();
+  }
 }
 
 /* Returns the name of the running thread. */
@@ -356,6 +375,8 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if (new_priority < list_entry(list_max(&ready_list, compare_priority, NULL), struct thread, elem)->priority)
+    thread_yield ();
 }
 
 /* Returns the current thread's priority. */
@@ -565,7 +586,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return list_entry (list_pop_max (&ready_list, compare_priority, NULL), struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -654,3 +675,24 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+bool 
+compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  return list_entry(a, struct thread, elem)->priority < list_entry(b, struct thread, elem)->priority;
+}
+
+bool
+compare_priority_semaphore_elems (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+	struct semaphore *semaphore_of_a = &list_entry(a, struct semaphore_elem, elem)->semaphore;
+	struct semaphore *semaphore_of_b = &list_entry(b, struct semaphore_elem, elem)->semaphore;
+	struct list *waiters_of_a = &semaphore_of_a->waiters;
+	struct list *waiters_of_b = &semaphore_of_b->waiters;
+	struct thread *thread_of_max_priority_of_a = list_entry(list_max (waiters_of_a, compare_priority, NULL),
+																									struct thread, elem);
+	struct thread *thread_of_max_priority_of_b = list_entry(list_max (waiters_of_b, compare_priority, NULL),
+																									struct thread, elem);
+	return thread_of_max_priority_of_a->priority < thread_of_max_priority_of_b->priority;
+																									
+}
