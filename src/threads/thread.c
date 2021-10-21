@@ -467,16 +467,26 @@ bool thread_has_highest_priority(int curr_pri) {
 }
 
 void update_load_avg(void) {
+  int it;
+  if (idle_thread->status == THREAD_RUNNING){
+    it = 2;
+  } else {
+    it = 0;
+  }
+
   load_avg = fp_add(
              fp_multi(create_frac(59, 60), load_avg), 
-             fp_multi_int(create_frac(1, 60), list_size(&ready_list)));
+             fp_multi_int(create_frac(1, 60), threads_ready () + 1 - it));
+  printf("%d  ", fp_to_i_nearest(fp_multi_int(load_avg, 100)));
+  printf("%d\n", threads_ready () + 1 - it);
+             
 }
 
 void update_recent_cpu(struct thread *t, void *aux UNUSED) {
-  fp coefficient = fp_divide(fp_multi_int(load_avg, 2),
-                             fp_add_int(fp_multi_int(load_avg, 2), 1));
+  fp coefficient = fp_divide(fp_multi(load_avg, i_to_fp(2)),
+                             fp_add(fp_multi(load_avg, i_to_fp(2)), i_to_fp(1)));
   
-  t->recent_cpu = fp_add_int(fp_multi(coefficient, t->recent_cpu), t->nice);
+  t->recent_cpu = fp_add(fp_multi(coefficient, t->recent_cpu), i_to_fp(t->nice));
 }
 
 void update_priority(struct thread *t, void *aux UNUSED) {
@@ -522,6 +532,7 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
+  //return fp_to_i_nearest(fp_multi_int(load_avg, 100));
   return fp_to_i_nearest(fp_multi_int(load_avg, 100));
 }
 
