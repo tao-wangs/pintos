@@ -197,6 +197,19 @@ lock_init (struct lock *lock)
   sema_init (&lock->semaphore, 1);
 }
 
+static void
+lock_obtain (struct lock *lock)
+{
+  lock->holder = thread_current ();
+  for (struct list_elem *e = list_begin (&lock->semaphore.waiters);
+       e != list_end (&lock->semaphore.waiters);
+       e = list_next (e))
+  {
+    struct thread *t = list_entry(e, struct thread, elem);
+    thread_donate (t, thread_current ());
+  }
+}
+
 /* Acquires LOCK, sleeping until it becomes available if
    necessary.  The lock must not already be held by the current
    thread.
@@ -211,9 +224,14 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-  sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  int old_level = intr_disable();
+  if (!sema_try_down(&lock->semaphore))
+  {
+    thread_donate (thread_current (), lock->holder);
+    sema_down (&lock->semaphore);
+  }
+  intr_set_level(old_level);
+  lock_obtain(lock); 
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -232,7 +250,7 @@ lock_try_acquire (struct lock *lock)
 
   success = sema_try_down (&lock->semaphore);
   if (success)
-    lock->holder = thread_current ();
+    lock_obtain(lock); 
   return success;
 }
 
@@ -246,7 +264,14 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+  int old_level = intr_disable ();
+  for (struct list_elem *e = list_begin (&lock->semaphore.waiters);
+       e != list_end (&lock->semaphore.waiters);
+       e = list_next (e))
+  {
+    thread_remove_donation (list_entry(e, struct thread, elem));
+  }
+  intr_set_level (old_level);
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
