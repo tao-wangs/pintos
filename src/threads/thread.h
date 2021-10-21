@@ -96,7 +96,7 @@ struct thread
 
     struct list priority_list;             /* List donated priorities. */
     struct list_elem priority_elem;
-    struct thread *donated_to;            /* The list this thread has donated to. */
+    struct thread *donated_to;            /* The thread this thread has donated to. */
     struct lock priority_list_lock;
 
 #ifdef USERPROG
