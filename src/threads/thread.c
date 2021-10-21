@@ -557,6 +557,10 @@ init_thread (struct thread *t, const char *name, int priority, int nice,
   t->recent_cpu = recent_cpu;
   t->magic = THREAD_MAGIC;
 
+  if (thread_mlfqs) {
+    update_priority(t, 0);
+  }
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
