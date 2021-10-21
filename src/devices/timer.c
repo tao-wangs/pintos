@@ -233,7 +233,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     sema_bin_up (&wake_threads_sema);  
 
   // Every time a timer interrupt occurs, recent_cpu is incremented by 1  
-  thread_current ()->recent_cpu++;
+  thread_current ()->recent_cpu = fp_add_int(thread_current ()->recent_cpu, 1);
 
   // Every second the value of load_avg and recent_cpu is recalculated  
   if (timer_ticks () % TIMER_FREQ == 0) {
