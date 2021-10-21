@@ -712,5 +712,4 @@ compare_priority_semaphore_elems (const struct list_elem *a, const struct list_e
 																									struct thread, elem);
 	return thread_get_effective_priority (thread_of_max_priority_of_a) <
            thread_get_effective_priority (thread_of_max_priority_of_b);
-																									
 }
