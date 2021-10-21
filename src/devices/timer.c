@@ -231,6 +231,19 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   if (!list_empty (&sleeping_threads))
     sema_bin_up (&wake_threads_sema);  
+
+  // Every time a timer interrupt occurs, recent_cpu is incremented by 1  
+  thread_current ()->recent_cpu = fp_add_int(thread_current ()->recent_cpu, 1);
+
+  // Every second the value of load_avg and recent_cpu is recalculated  
+  if (timer_ticks () % TIMER_FREQ == 0) {
+    update_load_avg ();
+    thread_foreach (update_recent_cpu, 0);
+  }
+
+  if (timer_ticks() % 4 == 0 && thread_mlfqs) {
+    thread_foreach (update_priority, 0);
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
