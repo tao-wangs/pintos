@@ -452,6 +452,7 @@ thread_get_effective_priority (struct thread *t)
   return MAX(t->priority, thread_get_effective_priority (highest_priority));
 }
 
+/* Returns true if current thread's priority is still the highest */
 bool thread_has_highest_priority(int curr_pri) {
   struct list_elem *n;
 
@@ -466,31 +467,28 @@ bool thread_has_highest_priority(int curr_pri) {
   return true;
 }
 
+/* Updates the value of load_avg*/
 void update_load_avg(void) {
-  int it;
-  if (idle_thread->status == THREAD_RUNNING){
-    it = 2;
-  } else {
-    it = 0;
-  }
+  int it = idle_thread->status == THREAD_RUNNING ? 2 : 0;
 
   load_avg = fp_add(
              fp_multi(create_frac(59, 60), load_avg), 
              fp_multi_int(create_frac(1, 60), threads_ready () + 1 - it));
-  printf("%d  ", fp_to_i_nearest(fp_multi_int(load_avg, 100)));
-  printf("%d\n", threads_ready () + 1 - it);
-             
 }
 
+/* Updates the current thread's recent_cpu value. */
 void update_recent_cpu(struct thread *t, void *aux UNUSED) {
-  fp coefficient = fp_divide(fp_multi(load_avg, i_to_fp(2)),
-                             fp_add(fp_multi(load_avg, i_to_fp(2)), i_to_fp(1)));
+  fp coefficient = fp_divide (fp_multi (load_avg, i_to_fp (2)),
+                              fp_add (fp_multi (load_avg, i_to_fp (2)), 
+                                      i_to_fp (1)));
   
-  t->recent_cpu = fp_add(fp_multi(coefficient, t->recent_cpu), i_to_fp(t->nice));
+  t->recent_cpu = fp_add(fp_multi (coefficient, t->recent_cpu), 
+                         i_to_fp (t->nice));
 }
 
+/* Updates the current thread's priority using recent cpu usage and niceness */
 void update_priority(struct thread *t, void *aux UNUSED) {
-  int result = PRI_MAX - (fp_to_i_trunc(t->recent_cpu) / 4) - (t->nice * 2);
+  int result = PRI_MAX - (fp_to_i_trunc (t->recent_cpu) / 4) - (t->nice * 2);
   
   if (result > PRI_MAX) {
     t->priority = PRI_MAX;
@@ -514,7 +512,7 @@ thread_set_nice (int new_nice)
   /* Then need to recalculate the thread's priority based on the new nice value.
   If the running thread no longer has the highest priority, yields.*/
 
-  update_priority(ct, 0);
+  update_priority (ct, 0);
 
   if (!thread_has_highest_priority (ct->priority)) {
     thread_yield ();
@@ -533,14 +531,14 @@ int
 thread_get_load_avg (void) 
 {
   //return fp_to_i_nearest(fp_multi_int(load_avg, 100));
-  return fp_to_i_nearest(fp_multi_int(load_avg, 100));
+  return fp_to_i_nearest (fp_multi_int (load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  return fp_to_i_nearest(fp_multi_int(thread_current ()->recent_cpu, 100)); 
+  return fp_to_i_nearest (fp_multi_int (thread_current ()->recent_cpu, 100)); 
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
