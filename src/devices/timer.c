@@ -110,8 +110,10 @@ sleeping_thread_less(const struct list_elem *a,
 }
 
 void
-timer_wake_threads (void *aux UNUSED)
+timer_wake_threads (void *aux)
 {
+  struct thread **wake_thread = (struct thread **) aux;
+  *wake_thread = thread_current ();
   while (1) {
     sema_down (&wake_threads_sema); 
     if (list_empty (&sleeping_threads)) 

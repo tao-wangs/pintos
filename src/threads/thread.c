@@ -37,6 +37,9 @@ static struct thread *idle_thread;
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
+/* Wake thread. */
+static struct thread *wake_thread;
+
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
@@ -125,7 +128,7 @@ thread_start (void)
   /* Wait for the idle thread to initialize idle_thread. */
   sema_down (&idle_started);
 
-  thread_create("wake", PRI_MAX, timer_wake_threads, NULL);
+  thread_create("wake", PRI_MAX, timer_wake_threads, &wake_thread);
 }
 
 /* Returns the number of threads currently in the ready list */
@@ -469,7 +472,7 @@ bool thread_has_highest_priority(int curr_pri) {
 
 /* Updates the value of load_avg*/
 void update_load_avg(void) {
-  int it = idle_thread->status == THREAD_RUNNING ? 2 : 0;
+  int it = (idle_thread->status == THREAD_RUNNING) + (wake_thread->status != THREAD_BLOCKED);
 
   load_avg = fp_add(
              fp_multi(create_frac(59, 60), load_avg), 
