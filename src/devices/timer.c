@@ -243,7 +243,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     thread_foreach (update_recent_cpu, 0);
   }
 
-  if (timer_ticks() % 4 == 0 && thread_mlfqs) {
+  if (timer_ticks() % TIME_SLICE == 0 && thread_mlfqs) {
     thread_foreach (update_priority, 0);
   }
 }
