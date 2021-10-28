@@ -43,6 +43,7 @@ static struct thread *wake_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+/* Average number of threads running */
 static fp load_avg;
 
 /* Stack frame for kernel_thread(). */
