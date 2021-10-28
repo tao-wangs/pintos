@@ -370,13 +370,14 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-
+/* Returns a pointer to the thread with the highest effective priority in priority_list. */
 static struct thread *
 highest_donator (struct thread * t)
 {
   return list_entry (list_begin (&t->priority_list), struct thread, priority_elem);
 }
 
+/* Donates the source threads effective priority to the dest thread. */
 void
 thread_donate (struct thread *source, struct thread *dest)
 {
@@ -388,6 +389,7 @@ thread_donate (struct thread *source, struct thread *dest)
     thread_update_donation (dest);
 }
 
+/* Re-inserts the element, to ensure the priority list is ordered. */
 void
 thread_update_donation (struct thread *t)
 {
@@ -402,6 +404,7 @@ thread_update_donation (struct thread *t)
     }
 }
 
+/* Removes the threads donation, and updates donation if necessary. */
 void 
 thread_remove_donation (struct thread *t)
 {
@@ -414,7 +417,8 @@ thread_remove_donation (struct thread *t)
   t->donated_to = NULL;
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
+/* Sets the current thread's priority to NEW_PRIORITY.
+   If the thread no longer has the highest priority, yield. */
 void
 thread_set_priority (int new_priority) 
 {
@@ -438,6 +442,9 @@ thread_get_priority (void)
 
 #define MAX(x, y) x < y ? y : x
 
+/* If the thread has no donators, return base priority
+   Otherwise return the max of the base priority 
+   and the effective priority of its highest donator. */
 int
 thread_get_effective_priority (struct thread *t)
 {
@@ -750,6 +757,7 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
+/* Compares the effective priority of two threads. */
 bool 
 compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
@@ -757,6 +765,7 @@ compare_priority (const struct list_elem *a, const struct list_elem *b, void *au
          thread_get_effective_priority (list_entry(b, struct thread, elem));
 }
 
+/* Compares the effective priority of two threads, reverse order. */
 bool
 compare_priority_priority_elem (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
@@ -764,6 +773,7 @@ compare_priority_priority_elem (const struct list_elem *a, const struct list_ele
          thread_get_effective_priority (list_entry(b, struct thread, priority_elem));
 }
 
+/* Compares the effective priority of two semaphore elems, used by conditions. */
 bool
 compare_priority_semaphore_elems (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
