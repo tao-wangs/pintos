@@ -384,7 +384,10 @@ thread_donate (struct thread *source, struct thread *dest)
 {
   source->donated_to = dest;
   lock_acquire (&dest->priority_list_lock);
-  list_insert_ordered (&dest->priority_list, &source->priority_elem, compare_priority_priority_elem, NULL);
+  list_insert_ordered (&dest->priority_list,
+                       &source->priority_elem,
+                       compare_priority_priority_elem,
+                       NULL);
   lock_release (&dest->priority_list_lock);
   if (source == highest_donator (dest))
     thread_update_donation (dest);
@@ -398,7 +401,10 @@ thread_update_donation (struct thread *t)
     {
       lock_acquire (&t->donated_to->priority_list_lock);
       list_remove (&t->priority_elem);
-      list_insert_ordered (&t->donated_to->priority_list, &t->priority_elem, compare_priority_priority_elem, NULL);
+      list_insert_ordered (&t->donated_to->priority_list,
+                           &t->priority_elem,
+                           compare_priority_priority_elem,
+                           NULL);
       lock_release (&t->donated_to->priority_list_lock);
       if (t == highest_donator (t->donated_to))
         thread_update_donation (t->donated_to);
@@ -472,7 +478,8 @@ bool thread_has_highest_priority(int curr_pri) {
 
 /* Updates the value of load_avg*/
 void update_load_avg(void) {
-  int it = (idle_thread->status == THREAD_RUNNING) + (wake_thread->status != THREAD_BLOCKED);
+  int it = (idle_thread->status == THREAD_RUNNING) 
+           + (wake_thread->status != THREAD_BLOCKED);
 
   load_avg = fp_add(
              fp_multi(create_frac(59, 60), load_avg), 
@@ -668,7 +675,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_max (&ready_list, compare_priority, NULL), struct thread, elem);
+    return list_entry (list_pop_max (&ready_list, compare_priority, NULL),
+                       struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -760,32 +768,48 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /* Compares the effective priority of two threads. */
 bool 
-compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+compare_priority (const struct list_elem *a,
+                  const struct list_elem *b,
+                  void *aux UNUSED)
 {
-  return thread_get_effective_priority (list_entry(a, struct thread, elem)) <
-         thread_get_effective_priority (list_entry(b, struct thread, elem));
+  return thread_get_effective_priority (list_entry (a, struct thread, elem)) <
+         thread_get_effective_priority (list_entry (b, struct thread, elem));
 }
 
 /* Compares the effective priority of two threads, reverse order. */
 bool
-compare_priority_priority_elem (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+compare_priority_priority_elem (const struct list_elem *a,
+                                const struct list_elem *b,
+                                void *aux UNUSED)
 {
-  return thread_get_effective_priority (list_entry(a, struct thread, priority_elem)) >
-         thread_get_effective_priority (list_entry(b, struct thread, priority_elem));
+  return thread_get_effective_priority (list_entry (a,
+                                                    struct thread,
+                                                    priority_elem)) >
+         thread_get_effective_priority (list_entry (b,
+                                                    struct thread,
+                                                    priority_elem));
 }
 
-/* Compares the effective priority of two semaphore elems, used by conditions. */
+/* Compares the effective priority of semaphore elems, used by conditions. */
 bool
-compare_priority_semaphore_elems (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+compare_priority_semaphore_elems (const struct list_elem *a,
+                                  const struct list_elem *b,
+                                  void *aux UNUSED)
 {
-	struct semaphore *semaphore_of_a = &list_entry(a, struct semaphore_elem, elem)->semaphore;
-	struct semaphore *semaphore_of_b = &list_entry(b, struct semaphore_elem, elem)->semaphore;
+	struct semaphore *semaphore_of_a = &list_entry(a,
+                                                   struct semaphore_elem,
+                                                   elem)->semaphore;
+	struct semaphore *semaphore_of_b = &list_entry(b,
+                                                   struct semaphore_elem,
+                                                   elem)->semaphore;
 	struct list *waiters_of_a = &semaphore_of_a->waiters;
 	struct list *waiters_of_b = &semaphore_of_b->waiters;
-	struct thread *thread_of_max_priority_of_a = list_entry(list_max (waiters_of_a, compare_priority, NULL),
-																									struct thread, elem);
-	struct thread *thread_of_max_priority_of_b = list_entry(list_max (waiters_of_b, compare_priority, NULL),
-																									struct thread, elem);
+	struct thread *thread_of_max_priority_of_a = list_entry ( 
+            list_max (waiters_of_a, compare_priority, NULL),
+		    struct thread, elem);
+	struct thread *thread_of_max_priority_of_b = list_entry (
+            list_max (waiters_of_b, compare_priority, NULL),
+		    struct thread, elem);
 	return thread_get_effective_priority (thread_of_max_priority_of_a) <
            thread_get_effective_priority (thread_of_max_priority_of_b);
 }
