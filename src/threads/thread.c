@@ -414,20 +414,12 @@ thread_remove_donation (struct thread *t)
   t->donated_to = NULL;
 }
 
-static void
-thread_update_priority (struct thread *t)
-{
-  if (t->donated_to)
-    thread_update_donation (t->donated_to);  
-}
-
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
 {
   struct thread *cur = thread_current ();
   cur->priority = new_priority;
-  thread_update_priority (cur);
   if (!list_empty (&ready_list))
   {
     struct thread *max_priority_ready = list_entry (list_max (&ready_list, compare_priority, NULL),
