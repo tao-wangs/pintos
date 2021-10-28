@@ -198,6 +198,8 @@ lock_init (struct lock *lock)
   sema_init (&lock->donate_sema, 1);
 }
 
+/* It transfers the ownership of the donation from the threads in the waiters
+   list to the current thread. */
 static void
 lock_obtain (struct lock *lock)
 {
