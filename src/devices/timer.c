@@ -109,37 +109,6 @@ sleeping_thread_less(const struct list_elem *a,
   return x->end_time < y->end_time;
 }
 
-void
-timer_wake_threads (void *aux)
-{
-  struct thread **wake_thread = (struct thread **) aux;
-  *wake_thread = thread_current ();
-  while (1) {
-    sema_down (&wake_threads_sema); 
-    if (list_empty (&sleeping_threads)) 
-      continue;
-    int64_t time = timer_ticks ();
-    lock_acquire (&sleeping_threads_lock);
-    while (!list_empty (&sleeping_threads))
-    {
-      struct list_elem *e = list_pop_front (&sleeping_threads);
-      if (!e)
-        continue;
-      struct sleeping_thread *s = list_entry (e, struct sleeping_thread, elem);
-      if (!s)
-        continue;
-      if (s->end_time <= time)
-        sema_up (&s->sema);
-      else
-      {
-        list_push_front (&sleeping_threads, e);
-        break;
-      }
-    }
-    lock_release (&sleeping_threads_lock);
-  }
-}
-
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
@@ -149,9 +118,9 @@ timer_sleep (int64_t ticks)
   struct sleeping_thread sleeper;
   sleeper.end_time = timer_ticks () + ticks;
   sema_init (&sleeper.sema, 0);
-  lock_acquire (&sleeping_threads_lock);
+  int old_level = intr_disable ();
   list_insert_ordered (&sleeping_threads, &sleeper.elem, sleeping_thread_less, NULL);
-  lock_release (&sleeping_threads_lock);
+  intr_set_level (old_level);
   sema_down (&sleeper.sema);
 }
 
@@ -231,9 +200,22 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  if (!list_empty (&sleeping_threads))
-    sema_bin_up (&wake_threads_sema);  
-
+  while (!list_empty (&sleeping_threads))
+  {
+    struct list_elem *e = list_pop_front (&sleeping_threads);
+    if (!e)
+      continue;
+    struct sleeping_thread *s = list_entry (e, struct sleeping_thread, elem);
+    if (!s)
+      continue;
+    if (s->end_time <= ticks)
+      sema_up (&s->sema);
+    else
+    {
+      list_push_front (&sleeping_threads, e);
+      break;
+    }
+  }
   // Every time a timer interrupt occurs, recent_cpu is incremented by 1  
   thread_current ()->recent_cpu = fp_add_int(thread_current ()->recent_cpu, 1);
 
