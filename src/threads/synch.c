@@ -114,9 +114,14 @@ sema_up_max (struct semaphore *sema, int64_t max) {
   old_level = intr_disable ();
   sema->value = MIN(sema->value + 1, max);
   if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_max (&sema->waiters,
+  {
+    struct thread *t = list_entry (list_pop_max (&sema->waiters,
                                               compare_priority,
-                                              NULL), struct thread, elem));
+                                              NULL), struct thread, elem);
+
+    thread_unblock (t);
+    thread_priority_yield (t);
+  }
   intr_set_level (old_level);
 }
 

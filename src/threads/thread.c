@@ -227,6 +227,7 @@ thread_create (const char *name, int priority,
   lock_init (&t->priority_list_lock);
   /* Add to run queue. */
   thread_unblock (t);
+  thread_priority_yield (t);
 
   return tid;
 }
@@ -267,6 +268,11 @@ thread_unblock (struct thread *t)
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+}
+
+void
+thread_priority_yield (struct thread *t)
+{
   if (thread_get_effective_priority (t) > thread_get_priority ())
   {
     if (intr_context ())
