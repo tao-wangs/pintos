@@ -4,21 +4,10 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+typedef int pid_t; 
+
 static void syscall_handler (struct intr_frame *);
 
-static void
-halt (void)
-{
-
-}
-
-static void
-exit (int status)
-{
-
-}
-
-/* Tasks 2 and later. */
 static void 
 halt (void)
 {
@@ -32,7 +21,7 @@ exec (const char *file)
 {
 }
 static int 
-wait (pid_t)
+wait (pid_t pid)
 {
 }
 static bool 
@@ -72,7 +61,6 @@ close (int fd)
 {
 }
 
-#endif /* lib/user/syscall.h */
 void
 syscall_init (void) 
 {
@@ -84,9 +72,32 @@ syscall_handler (struct intr_frame *f)
 {
   uint32_t intr =  *((uint32_t *) f->esp);
   switch (intr):
-	case SYS_HALT:
-	  halt();
-
+    case SYS_HALT:
+      halt();
+    case SYS_EXIT:
+      exit();
+    case SYS_EXEC:
+      exec();
+    case SYS_WAIT:
+      wait();
+    case SYS_CREATE:
+      create();
+    case SYS_REMOVE:
+      remove();
+    case SYS_OPEN:
+      open();
+    case SYS_FILESIZE:
+      filesize();
+    case SYS_READ:
+      read();
+    case SYS_WRITE:
+      write();
+    case SYS_SEEK:
+      seek();
+    case SYS_TELL:
+      tell();
+    case SYS_CLOSE:
+      close();
     
   thread_exit ();
 }
