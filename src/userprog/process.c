@@ -30,7 +30,25 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
+  
+  char *token;
+  char *save_ptr;
+  char *arguments[];
+  int i = 0;
 
+  /* We need to divide the command line arguments into words at spaces. 
+     The first word is the program name, the second word is the first argument,
+     and so on. file_name is the string that we would like to tokenise. */
+   for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+        token = strtok_r (NULL, " ", &save_ptr))
+     /* This will add each of the words from our command line argument to the
+        arguments array. */
+     arguments[i++] = token;
+
+  /* We need to omit the command line arguments, and copy this so
+     that it can be printed out by exit(). */
+   char *program_name = arguments[0];
+   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
