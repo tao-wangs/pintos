@@ -74,31 +74,46 @@ syscall_handler (struct intr_frame *f)
   switch (intr):
     case SYS_HALT:
       halt();
+      break;
     case SYS_EXIT:
       exit();
+      break;
     case SYS_EXEC:
       exec();
+      break;
     case SYS_WAIT:
       wait();
+      break;
     case SYS_CREATE:
       create();
+      break;
     case SYS_REMOVE:
       remove();
+      break;
     case SYS_OPEN:
       open();
+      break;
     case SYS_FILESIZE:
       filesize();
+      break;
     case SYS_READ:
       read();
+      break;
     case SYS_WRITE:
       write();
+      break;
     case SYS_SEEK:
       seek();
+      break;
     case SYS_TELL:
       tell();
+      break;
     case SYS_CLOSE:
       close();
-    
+      break;
+    default:
+      ASSERT(1==0);
+
   thread_exit ();
 }
 
