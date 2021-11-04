@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "devices/shutdown.h"
 
 typedef int pid_t; 
 
@@ -56,7 +57,9 @@ get_int (const uint8_t *uaddr)
 static void 
 halt (void)
 {
+  shutdown_power_off ();
 }
+
 static void 
 exit (int status)
 {
