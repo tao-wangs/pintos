@@ -71,48 +71,49 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  *((uint32_t *) f->esp);
-  switch (intr):
+  switch (intr) {
     case SYS_HALT:
-      halt();
+     // halt();
       break;
     case SYS_EXIT:
-      exit();
+     // exit();
       break;
     case SYS_EXEC:
-      exec();
+     // exec();
       break;
     case SYS_WAIT:
-      wait();
+     // wait();
       break;
     case SYS_CREATE:
-      create();
+     // create();
       break;
     case SYS_REMOVE:
-      remove();
+     // remove();
       break;
     case SYS_OPEN:
-      open();
+     // open();
       break;
     case SYS_FILESIZE:
-      filesize();
+     // filesize();
       break;
     case SYS_READ:
-      read();
+     // read();
       break;
     case SYS_WRITE:
-      write();
+     // write();
       break;
     case SYS_SEEK:
-      seek();
+     // seek();
       break;
     case SYS_TELL:
-      tell();
+     // tell();
       break;
     case SYS_CLOSE:
-      close();
+     // close();
       break;
     default:
       ASSERT(1==0);
+  }
 
   thread_exit ();
 }
