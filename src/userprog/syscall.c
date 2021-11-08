@@ -61,8 +61,11 @@ halt (void)
 }
 
 static void 
-exit (int status)
+exit (struct intr_frame *f, int status)
 {
+  f->eax = status;
+
+  thread_exit();
 }
 static pid_t 
 exec (const char *file)
