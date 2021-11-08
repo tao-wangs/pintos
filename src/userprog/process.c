@@ -118,7 +118,7 @@ start_process (void *file_name_)
   	char * argument = arguments[i];
   	char * argument_with_null = argument + "\0";
   	uint8_t address_with_null_pointer = uint8_t *(argument_with_null);
-  	put_user(
+  	put_user(esp + (argc - 1) * 4, address_with_null_pointer);
   }
   
   /* Start the user process by simulating a return from an
