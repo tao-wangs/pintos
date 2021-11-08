@@ -63,7 +63,18 @@ halt (void)
 static void 
 exit (struct intr_frame *f, int status)
 {
+  /* Prints to the console output of the form <name>: exit(<code>), where
+    <name> = full name passed to process_execute()
+    <code> = process's exit code
+    
+     Needs to check if the halt system call is invoked or the kernel thread
+     is not a user process first. */
+  
+  //char *name = thread_current ()->name
+
   f->eax = status;
+
+  printf("%s: exit(%d)\n", f->esp+12, f->eax);  
 
   thread_exit();
 }
