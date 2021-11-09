@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -460,14 +461,14 @@ setup_stack (void **esp, const char *file_name)
   //strlcpy(temp, file_name, strlen(file_name) + 1);
 
   // First we need to figure out how many arguments there are
-  for (int i = 0; i < strlen(file_name); i++) {
+  for (int i = 0; i < (int) strlen(file_name); i++) {
     if (file_name[i] == ' ') {
       argc++;
     }
   }
 
   // Next we break up file_name into individual arguments
-  char **tokens = malloc(sizeof(char *) * argc);
+  char **tokens = (char **) malloc(sizeof(char *) * argc);
 
   int32_t *addresses = (int32_t *) calloc(argc, sizeof(int32_t));
 
@@ -477,7 +478,7 @@ setup_stack (void **esp, const char *file_name)
   // Temporary copy of file_name to use in strtok_r
   // +1 because we have to take into consideration the \0 character I think?
   // do correct me if im wrong
-  char *temp = malloc(sizeof(char) * strlen(file_name) + 1);
+  char *temp = (char *) malloc(sizeof(char) * strlen(file_name) + 1);
 
   strlcpy(temp, file_name, strlen(file_name) + 1);
 
@@ -497,7 +498,7 @@ setup_stack (void **esp, const char *file_name)
   for (int i = argc - 1; i >= 0; i--) {
     *esp -= strlen(tokens[i]) + 1;
     memcpy(*esp, tokens[i], strlen(tokens[i] + 1));
-    addresses[i] = *esp;
+    addresses[i] = (int32_t) *esp;
   }
 
   uint8_t zero = 0;
