@@ -334,14 +334,6 @@ thread_exit (void)
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
-
-  /* Prints to the console output of the form <name>: exit(<code>), where
-    <name> = full name passed to process_execute()
-    <code> = process's exit code
-    
-     Needs to check if the halt system call is invoked or the kernel thread
-     is not a user process first. */
-  printf("%s: exit(%d)\n", thread_current ()->name, 0);
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and
