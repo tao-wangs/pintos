@@ -100,12 +100,27 @@ read (int fd, void *buffer, unsigned length)
 }
 static int 
 write (int fd, const void *buffer, unsigned length)
+// length is the size in bytes.
 {
+  int remaining_length = (int) length;
+  int file_size = filesize(fd);
+  
   // first checks if fd is set to write to the console
-  if (fd == 1) {
-    putbuf((const char *) (buffer), length); // TODO: BREAKUP LARGER BUFFERS
-    return (int) length;
+  if (fd == STDOUT_FILENO) {
+    // Write to the console all of buffer in one call to putbuf(), at least
+    // as long as the size is not bigger than a few hundred bytes.
+    if (length <= 300) {
+      putbuf((const char *) (buffer), length); // TODO: BREAKUP LARGER BUFFERS
+      return (int) length;
+    } 
   }
+  
+  // The expected behaviour is to write as many bytes as possible up to end-of-file
+  // 
+  putbuf((const char *) (buffer), file_size);
+  return file_size;
+  
+  
 }
 static void 
 seek (int fd, unsigned position)
