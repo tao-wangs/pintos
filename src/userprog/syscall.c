@@ -104,7 +104,7 @@ write (int fd, const void *buffer, unsigned length)
   // first checks if fd is set to write to the console
   if (fd == 1) {
     putbuf((const char *) (buffer), length); // TODO: BREAKUP LARGER BUFFERS
-    return length;
+    return (int) length;
   }
 }
 static void 
