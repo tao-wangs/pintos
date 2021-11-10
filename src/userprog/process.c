@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -198,7 +199,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, const char *file_name);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -305,7 +306,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, file_name))
     goto done;
 
   /* Start address. */
@@ -438,7 +439,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, const char *file_name) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -448,10 +449,87 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
+
+  uint8_t argc = 1;
+  uint8_t i = 0;
+
+  //char *temp = malloc(sizeof(char) * (strlen(file_name) + 1));
+  //strlcpy(temp, file_name, strlen(file_name) + 1);
+
+  // First we need to figure out how many arguments there are
+  for (int i = 0; i < (int) strlen(file_name); i++) {
+    if (file_name[i] == ' ') {
+      argc++;
+    }
+  }
+
+  // Next we break up file_name into individual arguments
+  char **tokens = (char **) malloc(sizeof(char *) * argc);
+
+  int32_t *addresses = (int32_t *) calloc(argc, sizeof(int32_t));
+
+  char *save_ptr;
+  char *token = " ";
+
+  // Temporary copy of file_name to use in strtok_r
+  // +1 because we have to take into consideration the \0 character I think?
+  // do correct me if im wrong
+  char *temp = (char *) malloc(sizeof(char) * strlen(file_name) + 1);
+
+  strlcpy(temp, file_name, strlen(file_name) + 1);
+
+  // Tokenise the copy and add to array of tokens
+  while (token != NULL && i < argc) {
+    if (i == 0) {
+	    token = strtok_r(temp, " ", &save_ptr);
+	  } else {
+	    token = strtok_r(NULL, " ", &save_ptr);	
+	  }
+      tokens[i] = token;
+      i++;	
+  }
+
+  // FAQ in spec says to decrement the stack pointer before pushing
+
+  for (int i = argc - 1; i >= 0; i--) {
+    *esp -= strlen(tokens[i]) + 1;
+    memcpy(*esp, tokens[i], strlen(tokens[i] + 1));
+    addresses[i] = (int32_t) *esp;
+  }
+
+  uint8_t zero = 0;
+  uint8_t *zero_ptr = &zero;
+
+  // rounding stack pointer to a multiple of 4
+  while ((int) *esp % 4 != 0) {
+    *esp -= sizeof(char);
+    memcpy(*esp, zero_ptr, sizeof(uint8_t));
+  }
+
+  // null pointer sentinel
+  *esp -= sizeof(int32_t);
+  memcpy(*esp, zero_ptr, sizeof(int32_t));
+
+  // addresses of arguments 
+  for (int i = argc - 1; i >= 0; i--) {
+    *esp -= sizeof(int32_t);
+    memcpy(*esp, &addresses[i], sizeof(int32_t));
+  }
+
+  int32_t *first_ptr = *esp;
+  *esp -= sizeof(int32_t);
+  memcpy(*esp, first_ptr, sizeof(int32_t));
+
+  *esp -= sizeof(int32_t);
+  memcpy(*esp, &argc, sizeof(int32_t));
+
+  *esp -= sizeof(int32_t);
+  memcpy(*esp, zero_ptr, sizeof(int32_t));
+
   return success;
 }
 
