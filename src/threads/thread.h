@@ -114,6 +114,9 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    
+    struct list children;
+    struct list child_elem;
 #endif
 
     /* Owned by thread.c. */
@@ -175,5 +178,7 @@ bool thread_has_highest_priority(int curr_pri);
 void update_load_avg(void);
 void update_recent_cpu(struct thread *t, void *aux UNUSED);
 void update_priority(struct thread *t, void *aux UNUSED);
+
+bool isChild (tid_t tid);
 
 #endif /* threads/thread.h */

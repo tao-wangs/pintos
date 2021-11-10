@@ -815,3 +815,15 @@ compare_priority_semaphore_elems (const struct list_elem *a,
 	return thread_get_effective_priority (thread_of_max_priority_of_a) <
            thread_get_effective_priority (thread_of_max_priority_of_b);
 }
+
+bool
+isChild (tid_t tid)
+{
+  for (list_elem *e = list_begin (thread_current ()->children);
+       e != list_end(thread_current()->children);
+       e = list_next(e)) {
+    if (list_entry (e, struct thread, child_elem)->tid == tid)
+      return true;
+  }
+  return false;
+}
