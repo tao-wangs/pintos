@@ -182,6 +182,8 @@ tell (int fd)
 static void 
 close (int fd)
 {
+  struct file *open_file = get_corresponding_file(fd);
+  file_close (open_file;
 }
 
 void
