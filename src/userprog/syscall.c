@@ -89,11 +89,29 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
+  struct file *file_ptr = get_corresponding_file(fd);
+  struct inode *inode_ptr = file_ptr->inode;
+  struct file *return_ptr = file_open(inode_ptr);
+  
+  // Returns -1 if the file could not be open, in which case
+  // file_open will return a null pointer.
+  if(return_ptr == NULL) {
+    return -1;
+  } else {
+  // This is not a proper implementation that we should use, instead
+  // it is a temporary fix. See userprog.texi in doc directory at line
+  // 981 for details regarding casting a struct file * to get a file descriptor
+  // which is of type int.
+    return (int) return_ptr;
+  }
 }
 static int 
 filesize (int fd)
 {
+  struct file *file_ptr = get_corresponding_file(fd);
+  return file_length(file_ptr);
 }
+
 static int 
 read (int fd, void *buffer, unsigned length)
 {
@@ -104,7 +122,8 @@ write (int fd, const void *buffer, unsigned length)
 {
   int remaining_length = (int) length;
   int file_size = filesize(fd);
-  
+  const char * char_buffer = (const char *) buffer;
+   
   // first checks if fd is set to write to the console
   if (fd == STDOUT_FILENO) {
     // Write to the console all of buffer in one call to putbuf(), at least
@@ -120,8 +139,9 @@ write (int fd, const void *buffer, unsigned length)
         // as we have already printed the first 300 bytes of the buffer to the console.
         write(STDOUT_FILENO, buffer + 300, remaining_length);
     }
-    
   }
+  
+  
   
   
   // The expected behaviour is to write as many bytes as possible up to end-of-file
