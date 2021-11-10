@@ -112,12 +112,20 @@ write (int fd, const void *buffer, unsigned length)
     if (length <= 300) {
       putbuf((const char *) (buffer), length); // TODO: BREAKUP LARGER BUFFERS
       return (int) length;
-    } 
+    } else {
+        putbuf((const char*) (buffer), 300);
+        // This will decrement the size of the remaining bytes to be written by 300.
+        remaining_length -= 300;
+        // As each character is of size 1 byte, so we add 300 to the address of the buffer
+        // as we have already printed the first 300 bytes of the buffer to the console.
+        write(STDOUT_FILENO, buffer + 300, remaining_length);
+    }
   }
+  
   
   // The expected behaviour is to write as many bytes as possible up to end-of-file
   // 
-  putbuf((const char *) (buffer), file_size);
+  
   return file_size;
   
   
