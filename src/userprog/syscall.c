@@ -89,6 +89,7 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
+  thread *current_thread = current_thread();
   struct file *file_ptr = get_corresponding_file(fd);
   struct inode *inode_ptr = file_ptr->inode;
   struct file *return_ptr = file_open(inode_ptr);
@@ -101,8 +102,10 @@ open (const char *file)
   // This is not a proper implementation that we should use, instead
   // it is a temporary fix. See userprog.texi in doc directory at line
   // 981 for details regarding casting a struct file * to get a file descriptor
-  // which is of type int.
-    return (int) return_ptr;
+  // which is of type int. Adding the thread identifier of the current thread
+  // ensures that when a file is opened by different processes, each open 
+  // returns a new file descriptor.
+    return (int) return_ptr + current_thread->tid_t;
   }
 }
 static int 
