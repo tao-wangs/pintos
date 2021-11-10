@@ -89,9 +89,9 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
-  thread *current_thread = current_thread();
+  struct thread *current_thread = current_thread();
   struct file *file_ptr = get_corresponding_file(fd);
-  struct inode *inode_ptr = file_ptr->inode;
+  struct inode *inode_ptr = file_get_inode(inode_ptr);
   struct file *return_ptr = file_open(inode_ptr);
   
   // Returns -1 if the file could not be open, in which case
@@ -108,6 +108,16 @@ open (const char *file)
     return (int) return_ptr + current_thread->tid_t;
   }
 }
+
+// This should return a pointer to the file, from its file descriptor.
+struct file *
+get_corresponding_file (int fd) {
+  struct thread *current_thread = current_thread();
+  int current_tid_t = current_thread->tid_t;
+  // Brackets are needed because cast has a higher precedence than subtraction in c.
+  struct file *file_ptr = (struct file *) (fd - current_tid_t); 
+}
+
 static int 
 filesize (int fd)
 {
@@ -157,7 +167,11 @@ write (int fd, const void *buffer, unsigned length)
 static void 
 seek (int fd, unsigned position)
 {
+  struct file *file_ptr = get_corresponding_file(fd);
+  off_t new_pos = (off_t) position;
+  file_seek(file_ptr, new_pos);
 }
+
 static unsigned 
 tell (int fd)
 {
