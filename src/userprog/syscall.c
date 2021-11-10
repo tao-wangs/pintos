@@ -44,7 +44,7 @@ get_int (const uint8_t *uaddr)
   int result = 0;
   for (int i = 0; i < 4; ++i)
   {
-    int temp = get_user (uaddr + i);
+    int temp = get_user (uaddr + (3 - i));
     if (temp == -1)
     {
       return -1;
@@ -129,6 +129,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
+  printf("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
      // halt();
