@@ -175,6 +175,9 @@ seek (int fd, unsigned position)
 static unsigned 
 tell (int fd)
 {
+  struct file *file_ptr = get_corresponding_file(fd);
+  off_t next_byte_pos = file_tell(file_ptr);
+  return unsigned (next_byte_pos);
 }
 static void 
 close (int fd)
