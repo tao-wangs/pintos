@@ -73,6 +73,7 @@ exit (int status)
 static pid_t 
 exec (const char *file)
 {
+  return process_execute(file);
 }
 static int 
 wait (pid_t pid)
@@ -129,6 +130,9 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
+  (void *) arg1 = get_int((uint8_t *) f->esp + 4);
+  (void *) arg2 = get_int((uint8_t *) f->esp + 8);
+  (void *) arg3 = get_int((uint8_t *) f->esp + 12);
   printf("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
