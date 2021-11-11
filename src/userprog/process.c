@@ -67,14 +67,6 @@ start_process (void *file_name_)
   if (!success) 
     thread_exit ();
 
-  int argc = (arguments.length / sizeof(char *));
-  for (int i = argc; i!= 0; i--) {
-  	char * argument = arguments[i];
-  	char * argument_with_null = argument + "\0";
-  	uint8_t address_with_null_pointer = uint8_t *(argument_with_null);
-  	put_user(esp + (argc - 1) * 4, address_with_null_pointer);
-  }
-  
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its

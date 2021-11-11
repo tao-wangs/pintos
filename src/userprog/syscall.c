@@ -243,9 +243,3 @@ syscall_handler (struct intr_frame *f)
   thread_exit ();
 }
 
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> 39b61c71a2c5ca2af2fa0492df7e34b900e47e02
