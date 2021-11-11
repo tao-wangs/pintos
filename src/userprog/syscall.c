@@ -130,51 +130,52 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
-  (void *) arg1 = get_int((uint8_t *) f->esp + 4);
-  (void *) arg2 = get_int((uint8_t *) f->esp + 8);
-  (void *) arg3 = get_int((uint8_t *) f->esp + 12);
+  void *arg1 = (void *) get_int((uint8_t *) f->esp + 4);
+  void *arg2 = (void *) get_int((uint8_t *) f->esp + 8);
+  void *arg3 = (void *) get_int((uint8_t *) f->esp + 12);
   printf("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
-     // halt();
+      halt();
       break;
     case SYS_EXIT:
-     // exit();
+      exit((int) arg1);
       break;
     case SYS_EXEC:
-     // exec();
+      exec((const char *) arg1);
       break;
     case SYS_WAIT:
-     // wait();
+      wait((pid_t) arg1);
       break;
     case SYS_CREATE:
-     // create();
+      create((const char *) arg1, (unsigned) arg2);
       break;
     case SYS_REMOVE:
-     // remove();
+      remove((const char *) arg1);
       break;
     case SYS_OPEN:
-     // open();
+      open((const char *) arg1);
       break;
     case SYS_FILESIZE:
-     // filesize();
+      filesize((int) arg1);
       break;
     case SYS_READ:
-     // read();
+      read((int) arg1, arg2, (unsigned int) arg3); 
       break;
     case SYS_WRITE:
-     // write();
+      write((int) arg1, arg2, (unsigned int) arg3);
       break;
     case SYS_SEEK:
-     // seek();
+      seek((int) arg1, (unsigned int) arg2);
       break;
     case SYS_TELL:
-     // tell();
+      tell((int) arg1);
       break;
     case SYS_CLOSE:
-     // close();
+      close((int) arg2);
       break;
     default:
+      printf("System call number not recognised\n");
       ASSERT(1==0);
   }
 
