@@ -102,17 +102,21 @@ wait (pid_t pid)
 static bool 
 create (const char *file, unsigned initial_size)
 {
+  off_t file_size = off_t (initial_size);
+  return filesys_create(file, file_size): 
 }
 
 static bool 
 remove (const char *file)
 {
+  return filesys_remove(file);
 }
 static int 
 open (const char *file)
 {
   struct thread *current_thread = current_thread();
   struct file *file_ptr = get_corresponding_file(fd);
+
   struct inode *inode_ptr = file_get_inode(inode_ptr);
   struct file *return_ptr = file_open(inode_ptr);
   
@@ -126,7 +130,7 @@ open (const char *file)
   // 981 for details regarding casting a struct file * to get a file descriptor
   // which is of type int. Adding the thread identifier of the current thread
   // ensures that when a file is opened by different processes, each open 
-  // returns a new file descriptor.
+  // returns a new file descriptor. Also see #177 on EdStem for further details. 
     return (int) return_ptr + current_thread->tid_t;
   }
 }
@@ -151,6 +155,7 @@ static int
 read (int fd, void *buffer, unsigned length)
 {
 }
+
 static int 
 write (int fd, const void *buffer, unsigned length)
 // length is the size in bytes.
@@ -158,7 +163,11 @@ write (int fd, const void *buffer, unsigned length)
   int remaining_length = (int) length;
   int file_size = filesize(fd);
   const char * char_buffer = (const char *) buffer;
-   
+  
+  // This doesn't break up the larger buffers into shorter buffers correctly, as
+  // the first recursive call will cause the length value to be returned, and so 
+  // we won't iterate through the rest of the buffer.
+  
   // first checks if fd is set to write to the console
   if (fd == STDOUT_FILENO) {
     // Write to the console all of buffer in one call to putbuf(), at least
@@ -172,12 +181,20 @@ write (int fd, const void *buffer, unsigned length)
         remaining_length -= 300;
         // As each character is of size 1 byte, so we add 300 to the address of the buffer
         // as we have already printed the first 300 bytes of the buffer to the console.
-        write(STDOUT_FILENO, buffer + 300, remaining_length);
+        // write(STDOUT_FILENO, buffer + 300, remaining_length);
+        
+        if (remaining_length <= 300) {
+      	  putbuf((const char *) (buffer), remaining_length;
+          return (int) length;
+        }
     }
   }
   
-  
-  
+  struct file *file_ptr = get_corresponding_file(fd);
+  // file_deny_write() has been called as so we cannot write to the open file fd.
+  if (file_ptr->deny_write) {
+    return 0;
+  }
   
   // The expected behaviour is to write as many bytes as possible up to end-of-file
   // 
@@ -205,7 +222,7 @@ static void
 close (int fd)
 {
   struct file *open_file = get_corresponding_file(fd);
-  file_close (open_file;
+  file_close (open_file);
 }
 
 void
