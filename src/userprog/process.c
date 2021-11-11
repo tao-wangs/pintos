@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#include "threads/threadtable.h"
 
 
 static thread_func start_process NO_RETURN;
@@ -127,10 +128,18 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  if (child_tid == TID_ERROR || !isChild(child_tid))
+  if (child_tid == TID_ERROR)
     return -1;
-  while (1) {}
-  return -1;
+  threadtable_acquire (); 
+  struct threadtable_elem *elem = find (child_tid);
+  threadtable_release ();
+  if (!elem || elem->waited)
+  {
+    return -1;
+  }
+  sema_down (&elem->sema);
+  elem->waited = true;
+  return elem->status;
 }
 
 /* Free the current process's resources. */
@@ -139,7 +148,16 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  
+  /* Removes reference from threadtable for each child.
+     Probably should be moved. */
+  for (struct list_elem *e = list_begin (&cur->children);
+       e != list_end (&cur->children);
+       e = list_next (e))
+  {
+    struct thread *t = list_entry (e, struct thread, child_elem);
+    parentExit (t->tid);
+  }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

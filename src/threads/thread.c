@@ -12,6 +12,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/threadtable.h"
 #include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -107,6 +108,7 @@ thread_init (void)
   lock_init (&initial_thread->priority_list_lock);
   list_init (&initial_thread->file_list);
   load_avg = 0;
+  threadtable_init ();
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -223,6 +225,8 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
+  list_init (&t->children);
+  list_push_back(&thread_current()->children, &t->child_elem);
   list_init (&t->priority_list);
   lock_init (&t->priority_list_lock);
 
@@ -814,16 +818,4 @@ compare_priority_semaphore_elems (const struct list_elem *a,
 		    struct thread, elem);
 	return thread_get_effective_priority (thread_of_max_priority_of_a) <
            thread_get_effective_priority (thread_of_max_priority_of_b);
-}
-
-bool
-isChild (tid_t tid)
-{
-  for (list_elem *e = list_begin (thread_current ()->children);
-       e != list_end(thread_current()->children);
-       e = list_next(e)) {
-    if (list_entry (e, struct thread, child_elem)->tid == tid)
-      return true;
-  }
-  return false;
 }
