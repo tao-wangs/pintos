@@ -111,34 +111,101 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
+  struct thread *current_thread = current_thread();
+  struct file *file_ptr = get_corresponding_file(fd);
+  struct inode *inode_ptr = file_get_inode(inode_ptr);
+  struct file *return_ptr = file_open(inode_ptr);
+  
+  // Returns -1 if the file could not be open, in which case
+  // file_open will return a null pointer.
+  if(return_ptr == NULL) {
+    return -1;
+  } else {
+  // This is not a proper implementation that we should use, instead
+  // it is a temporary fix. See userprog.texi in doc directory at line
+  // 981 for details regarding casting a struct file * to get a file descriptor
+  // which is of type int. Adding the thread identifier of the current thread
+  // ensures that when a file is opened by different processes, each open 
+  // returns a new file descriptor.
+    return (int) return_ptr + current_thread->tid_t;
+  }
 }
+
+// This should return a pointer to the file, from its file descriptor.
+struct file *
+get_corresponding_file (int fd) {
+  struct thread *current_thread = current_thread();
+  int current_tid_t = current_thread->tid_t;
+  // Brackets are needed because cast has a higher precedence than subtraction in c.
+  struct file *file_ptr = (struct file *) (fd - current_tid_t); 
+}
+
 static int 
 filesize (int fd)
 {
+  struct file *file_ptr = get_corresponding_file(fd);
+  return file_length(file_ptr);
 }
+
 static int 
 read (int fd, void *buffer, unsigned length)
 {
 }
 static int 
 write (int fd, const void *buffer, unsigned length)
+// length is the size in bytes.
 {
+  int remaining_length = (int) length;
+  int file_size = filesize(fd);
+  const char * char_buffer = (const char *) buffer;
+   
   // first checks if fd is set to write to the console
-  if (fd == 1) {
-    putbuf((const char *) (buffer), length); // TODO: BREAKUP LARGER BUFFERS
+  if (fd == STDOUT_FILENO) {
+    // Write to the console all of buffer in one call to putbuf(), at least
+    // as long as the size is not bigger than a few hundred bytes.
+    if (length <= 300) {
+      putbuf((const char *) (buffer), length); // TODO: BREAKUP LARGER BUFFERS
+      return (int) length;
+    } else {
+        putbuf((const char*) (buffer), 300);
+        // This will decrement the size of the remaining bytes to be written by 300.
+        remaining_length -= 300;
+        // As each character is of size 1 byte, so we add 300 to the address of the buffer
+        // as we have already printed the first 300 bytes of the buffer to the console.
+        write(STDOUT_FILENO, buffer + 300, remaining_length);
+    }
   }
+  
+  
+  
+  
+  // The expected behaviour is to write as many bytes as possible up to end-of-file
+  // 
+  
+  return file_size;
+  
+  
 }
 static void 
 seek (int fd, unsigned position)
 {
+  struct file *file_ptr = get_corresponding_file(fd);
+  off_t new_pos = (off_t) position;
+  file_seek(file_ptr, new_pos);
 }
+
 static unsigned 
 tell (int fd)
 {
+  struct file *file_ptr = get_corresponding_file(fd);
+  off_t next_byte_pos = file_tell(file_ptr);
+  return unsigned (next_byte_pos);
 }
 static void 
 close (int fd)
 {
+  struct file *open_file = get_corresponding_file(fd);
+  file_close (open_file;
 }
 
 void
