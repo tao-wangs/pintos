@@ -4,6 +4,7 @@
 struct fd_map {
   int fd;
   struct file *fp;
+  struct list_elem *elem; 
 };
 
 void syscall_init (void);

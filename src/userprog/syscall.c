@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
+#include "devices/timer.h"
 
 typedef int pid_t; 
 
@@ -102,8 +103,9 @@ wait (pid_t pid)
 static bool 
 create (const char *file, unsigned initial_size)
 {
-  off_t file_size = off_t (initial_size);
+  int32_t file_size = int32_t (initial_size);
   return filesys_create(file, file_size): 
+ 
 }
 
 static bool 
@@ -114,8 +116,38 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
+  
   struct thread *current_thread = current_thread();
-  struct file *file_ptr = get_corresponding_file(fd);
+  struct list *files = &current_thread->file_list;
+  struct file *fp = filesys_open(file);
+  struct list_elem elem;
+
+
+  // maintains the invariant that a file cannot be opened by a thread more than once simultaneously
+  for(struct list_elem e = list_begin(files); e != list_end(files); e = list_next(e)){
+    struct fd_map *current_fp = list_entry(e, struct fd_map, elem);
+    if(current_fp->fp == fp){
+      file_close(fp);
+      break; //can break as soon as we find that fp is already open by the current thread because of our invariant
+    }
+  }
+
+  if (fp == NULL){
+    return -1;
+  }
+
+  //makes fd unique as timer_ticks() always increases
+  int current_ticks = timer_ticks();
+
+  struct fd_map current_fd_map;
+  current_fd_map.fp = fp;
+  current_fd_map.elem = &elem;
+  current_fd_map.fd = current_ticks + 2;
+  list_push_back(&(current_thread->file_list), &elem);
+
+  return current_fd_map.fd;
+
+  /*struct file *file_ptr = get_corresponding_file(fd);
 
   struct inode *inode_ptr = file_get_inode(inode_ptr);
   struct file *return_ptr = file_open(inode_ptr);
@@ -132,16 +164,26 @@ open (const char *file)
   // ensures that when a file is opened by different processes, each open 
   // returns a new file descriptor. Also see #177 on EdStem for further details. 
     return (int) return_ptr + current_thread->tid_t;
-  }
+  }*/
 }
 
 // This should return a pointer to the file, from its file descriptor.
 struct file *
 get_corresponding_file (int fd) {
-  struct thread *current_thread = current_thread();
+  struct list *files = &thread_current()->file_list;
+  for(struct list_elem e = list_begin(files); e != list_end(files); e = list_next(e)){
+    struct fd_map *current_fd_map = list_entry(e, struct fd_map, elem);
+    if(current_fd_map->fd == fd){
+      return current_fd_map->fp;
+    }
+  }
+  return NULL; //this shouldnt really work, maybe fix
+
+	/*struct thread *current_thread = current_thread();
   int current_tid_t = current_thread->tid_t;
   // Brackets are needed because cast has a higher precedence than subtraction in c.
   struct file *file_ptr = (struct file *) (fd - current_tid_t); 
+  */
 }
 
 static int 
@@ -160,6 +202,7 @@ static int
 write (int fd, const void *buffer, unsigned length)
 // length is the size in bytes.
 {
+  /*
   int remaining_length = (int) length;
   int file_size = filesize(fd);
   const char * char_buffer = (const char *) buffer;
@@ -184,7 +227,7 @@ write (int fd, const void *buffer, unsigned length)
         // write(STDOUT_FILENO, buffer + 300, remaining_length);
         
         if (remaining_length <= 300) {
-      	  putbuf((const char *) (buffer), remaining_length;
+      	  putbuf((const char *) (buffer), remaining_length);
           return (int) length;
         }
     }
@@ -201,28 +244,43 @@ write (int fd, const void *buffer, unsigned length)
   
   return file_size;
   
-  
+  */
 }
 static void 
 seek (int fd, unsigned position)
 {
+  
   struct file *file_ptr = get_corresponding_file(fd);
-  off_t new_pos = (off_t) position;
+  int32_t new_pos = (int32_t) position;
   file_seek(file_ptr, new_pos);
+  
 }
 
 static unsigned 
 tell (int fd)
 {
   struct file *file_ptr = get_corresponding_file(fd);
-  off_t next_byte_pos = file_tell(file_ptr);
-  return unsigned (next_byte_pos);
+  int32_t next_byte_pos = file_tell(file_ptr);
+  return (uint32_t) next_byte_pos;
 }
+
 static void 
 close (int fd)
 {
+  
   struct file *open_file = get_corresponding_file(fd);
+  
+  struct list *files = &thread_current()->file_list;
+  for(struct list_elem e = list_begin(files); e != list_end(files); e = list_next(e)){
+    struct fd_map *current_fd_map = list_entry(e, struct fd_map, elem);
+    if(current_fd_map->fd == fd){
+      list_remove(current_fp_map->list_elem);
+    }
+  }
+
+
   file_close (open_file);
+  
 }
 
 void
