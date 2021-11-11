@@ -31,25 +31,7 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-  
-  char *token;
-  char *save_ptr;
-  char *arguments[];
-  int i = 0;
 
-  /* We need to divide the command line arguments into words at spaces. 
-     The first word is the program name, the second word is the first argument,
-     and so on. file_name is the string that we would like to tokenise. */
-   for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
-        token = strtok_r (NULL, " ", &save_ptr))
-     /* This will add each of the words from our command line argument to the
-        arguments array. */
-     arguments[i++] = token;
-
-  /* We need to omit the command line arguments, and copy this so
-     that it can be printed out by exit(). */
-   char *program_name = arguments[0];
-   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -58,39 +40,10 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (program_name, PRI_DEFAULT, start_process, fn_copy);
-//  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
-  
-}
-
-/* Reads a byte at user virtual address UADDR.
-UADDR must be below PHYS_BASE.
-Returns the byte value if successful, -1 if a segfault
-occurred. */
-static int
-get_user (const uint8_t *uaddr)
-{
-  ASSERT (is_user_vaddr(uaddr)); //checks uaddr is below PHYS_BASE
-  int result;
-  asm ("movl $1f, %0; movzbl %1, %0; 1:"
-  : "=&a" (result) : "m" (*uaddr));
-  return result;
-}
-
-/* Writes BYTE to user address UDST.
-UDST must be below PHYS_BASE.
-Returns true if successful, false if a segfault occurred. */
-static bool
-put_user (uint8_t *udst, uint8_t byte)
-{ 
-  ASSERT (is_user_vaddr(udst)); //checks udst is below PHYS_BASE
-  int error_code;
-  asm ("movl $1f, %0; movb %b2, %1; 1:"
-  : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-  return error_code != -1;
 }
 
 /* A thread function that loads a user process and starts it
