@@ -5,11 +5,14 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
+#include "userprog/process.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
 
 typedef int pid_t; 
 
 static void syscall_handler (struct intr_frame *);
-
+struct file *get_corresponding_file (int fd);
 static void halt(void);
 static void exit(int status);
 static pid_t exec(const char *file);
@@ -102,8 +105,8 @@ wait (pid_t pid)
 static bool 
 create (const char *file, unsigned initial_size)
 {
-  off_t file_size = off_t (initial_size);
-  return filesys_create(file, file_size): 
+  off_t file_size = (off_t) initial_size;
+  return filesys_create(file, file_size);
 }
 
 static bool 
@@ -114,7 +117,7 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
-  struct thread *current_thread = current_thread();
+  struct thread *current_thread = thread_current();
   struct file *file_ptr = get_corresponding_file(fd);
 
   struct inode *inode_ptr = file_get_inode(inode_ptr);
@@ -131,15 +134,15 @@ open (const char *file)
   // which is of type int. Adding the thread identifier of the current thread
   // ensures that when a file is opened by different processes, each open 
   // returns a new file descriptor. Also see #177 on EdStem for further details. 
-    return (int) return_ptr + current_thread->tid_t;
+    return (int) return_ptr + current_thread->tid;
   }
 }
 
 // This should return a pointer to the file, from its file descriptor.
 struct file *
 get_corresponding_file (int fd) {
-  struct thread *current_thread = current_thread();
-  int current_tid_t = current_thread->tid_t;
+  struct thread *current_thread = thread_current();
+  int current_tid_t = current_thread->tid;
   // Brackets are needed because cast has a higher precedence than subtraction in c.
   struct file *file_ptr = (struct file *) (fd - current_tid_t); 
 }
@@ -184,7 +187,7 @@ write (int fd, const void *buffer, unsigned length)
         // write(STDOUT_FILENO, buffer + 300, remaining_length);
         
         if (remaining_length <= 300) {
-      	  putbuf((const char *) (buffer), remaining_length;
+      	  putbuf((const char *) (buffer), remaining_length);
           return (int) length;
         }
     }
@@ -216,7 +219,7 @@ tell (int fd)
 {
   struct file *file_ptr = get_corresponding_file(fd);
   off_t next_byte_pos = file_tell(file_ptr);
-  return unsigned (next_byte_pos);
+  return (unsigned) next_byte_pos;
 }
 static void 
 close (int fd)
