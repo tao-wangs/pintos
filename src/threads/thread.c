@@ -98,7 +98,6 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT, NICE_DEFAULT, 0);
@@ -106,6 +105,7 @@ thread_init (void)
   initial_thread->tid = allocate_tid ();
   list_init (&initial_thread->priority_list);
   lock_init (&initial_thread->priority_list_lock);
+  list_init (&initial_thread->file_list);
   load_avg = 0;
 }
 
@@ -225,6 +225,9 @@ thread_create (const char *name, int priority,
 
   list_init (&t->priority_list);
   lock_init (&t->priority_list_lock);
+
+  list_init (&t->file_list);
+
   /* Add to run queue. */
   thread_unblock (t);
   thread_priority_yield (t);
