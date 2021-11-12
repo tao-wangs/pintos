@@ -449,7 +449,7 @@ setup_stack (void **esp, const char *file_name)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12;
       else
         palloc_free_page (kpage);
     }
@@ -478,7 +478,7 @@ setup_stack (void **esp, const char *file_name)
   // Temporary copy of file_name to use in strtok_r
   // +1 because we have to take into consideration the \0 character I think?
   // do correct me if im wrong
-  char *temp = (char *) malloc(sizeof(char) * strlen(file_name) + 1);
+  char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
 
   strlcpy(temp, file_name, strlen(file_name) + 1);
 
@@ -520,15 +520,21 @@ setup_stack (void **esp, const char *file_name)
     memcpy(*esp, &addresses[i], sizeof(int32_t));
   }
 
+  // pointer to first argument
   int32_t *first_ptr = *esp;
   *esp -= sizeof(int32_t);
   memcpy(*esp, first_ptr, sizeof(int32_t));
 
+  // argc
   *esp -= sizeof(int32_t);
   memcpy(*esp, &argc, sizeof(int32_t));
 
+  // fake return address 0
   *esp -= sizeof(int32_t);
   memcpy(*esp, zero_ptr, sizeof(int32_t));
+
+  /* Used for debugging purposes later */
+  //hex_dump((uint32_t) esp, *esp, 20, true);
 
   return success;
 }

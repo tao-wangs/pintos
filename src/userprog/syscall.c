@@ -103,9 +103,8 @@ wait (pid_t pid)
 static bool 
 create (const char *file, unsigned initial_size)
 {
-  int32_t file_size = int32_t (initial_size);
-  return filesys_create(file, file_size): 
- 
+  int32_t file_size = (int32_t) initial_size;
+  return filesys_create(file, file_size);
 }
 
 static bool 
@@ -117,14 +116,15 @@ static int
 open (const char *file)
 {
   
-  struct thread *current_thread = current_thread();
+  struct thread *current_thread = thread_current();
   struct list *files = &current_thread->file_list;
   struct file *fp = filesys_open(file);
   struct list_elem elem;
 
+  struct list_elem *e;
 
   // maintains the invariant that a file cannot be opened by a thread more than once simultaneously
-  for(struct list_elem e = list_begin(files); e != list_end(files); e = list_next(e)){
+  for(e = list_begin(files); e != list_end(files); e = list_next(e)){
     struct fd_map *current_fp = list_entry(e, struct fd_map, elem);
     if(current_fp->fp == fp){
       file_close(fp);
@@ -171,7 +171,10 @@ open (const char *file)
 struct file *
 get_corresponding_file (int fd) {
   struct list *files = &thread_current()->file_list;
-  for(struct list_elem e = list_begin(files); e != list_end(files); e = list_next(e)){
+
+  struct list_elem *e;
+
+  for(e = list_begin(files); e != list_end(files); e = list_next(e)){
     struct fd_map *current_fd_map = list_entry(e, struct fd_map, elem);
     if(current_fd_map->fd == fd){
       return current_fd_map->fp;
@@ -271,10 +274,13 @@ close (int fd)
   struct file *open_file = get_corresponding_file(fd);
   
   struct list *files = &thread_current()->file_list;
-  for(struct list_elem e = list_begin(files); e != list_end(files); e = list_next(e)){
+
+  struct list_elem *e;
+
+  for(e = list_begin(files); e != list_end(files); e = list_next(e)){
     struct fd_map *current_fd_map = list_entry(e, struct fd_map, elem);
     if(current_fd_map->fd == fd){
-      list_remove(current_fp_map->list_elem);
+      list_remove(current_fd_map->elem);
     }
   }
 

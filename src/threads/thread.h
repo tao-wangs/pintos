@@ -109,6 +109,8 @@ struct thread
     struct thread *donated_to;            /* The thread this thread has donated to. */
     struct lock priority_list_lock;
 
+    struct list file_list;              /* List files */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
