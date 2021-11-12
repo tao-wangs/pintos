@@ -13,7 +13,7 @@
 typedef int pid_t; 
 
 static void syscall_handler (struct intr_frame *);
-
+struct file *get_corresponding_file (int fd);
 static void halt(void);
 static void exit(int status);
 static pid_t exec(const char *file);
