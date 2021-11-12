@@ -6,6 +6,9 @@
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
 #include "devices/timer.h"
+#include "userprog/process.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
 
 typedef int pid_t; 
 
