@@ -141,7 +141,7 @@ open (const char *file)
 
   struct fd_map current_fd_map;
   current_fd_map.fp = fp;
-  current_fd_map.elem = &elem;
+  current_fd_map.elem = elem;
   current_fd_map.fd = current_ticks + 2;
   list_push_back(&(current_thread->file_list), &elem);
 
@@ -280,7 +280,7 @@ close (int fd)
   for(e = list_begin(files); e != list_end(files); e = list_next(e)){
     struct fd_map *current_fd_map = list_entry(e, struct fd_map, elem);
     if(current_fd_map->fd == fd){
-      list_remove(current_fd_map->elem);
+      list_remove(&current_fd_map->elem);
     }
   }
 
