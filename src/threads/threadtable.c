@@ -1,18 +1,19 @@
 #include "threads/threadtable.h"
+#include "threads/malloc.h"
 
 struct threadtable table;
 
-unsigned 
-thread_hash (const struct hash_elem *e, void *aux UNUSED)
+static unsigned 
+thread_hash (const struct hash_elem *e, void *aux)
 {
   struct threadtable_elem* elem = hash_entry (e, struct threadtable_elem, elem);
   return hash_int(elem->tid);
 }
 
-bool
+static bool
 thread_less (const struct hash_elem *a,
              const struct hash_elem *b,
-             void *aux UNUSED)
+             void *aux)
 {
   return hash_entry (a, struct threadtable_elem, elem)->tid
        < hash_entry (b, struct threadtable_elem, elem)->tid;
@@ -37,10 +38,10 @@ threadtable_init (void)
   lock_init (&table.lock);
 }
 
-void
-threadtable_elem_destroy (struct hash_elem *e, void *aux UNUSED)
+static void
+threadtable_elem_destroy (struct hash_elem *e, void *aux)
 {
-  free (hash_entry (e, struct threadtable_elem, elem);
+  free (hash_entry (e, struct threadtable_elem, elem));
 }
 
 void
@@ -53,7 +54,7 @@ struct threadtable_elem *
 find (int tid)
 {
   struct threadtable_elem temp;
-  temp.tid = child_tid;
+  temp.tid = tid;
   return hash_entry(hash_find (&table.table, &temp.elem),
                     struct threadtable_elem, elem);
 }
@@ -82,17 +83,17 @@ addThread (int parent_tid, int child_tid)
     lock_release (&table.lock);
     return false;
   }
-  sema_init (&elem->sema);
-  elem->tid = child_id;
+  sema_init (&elem->sema, 0);
+  elem->tid = child_tid;
   elem->parent_tid = parent_tid;
   elem->refs = 2;
   elem->waited = false;
-  hash_insert (&table.table, elem);
+  hash_insert (&table.table, &elem->elem);
   lock_release (&table.lock); 
   return true;
 }
 
-void
+static void
 decrRefs (struct threadtable_elem *elem)
 {
   --elem->refs;
@@ -113,23 +114,23 @@ parentExit (int child_tid)
     lock_release (&table.lock);
     return false;
   }
-  decrRefs (elem); 
+  decrRefs (e); 
   lock_release (&table.lock); 
   return true;
 }
 
-void
+bool
 childExit (int tid, int status)
 {
   lock_acquire (&table.lock);
-  struct threadtable_elem *e = find (child_tid);
+  struct threadtable_elem *e = find (tid);
   if (!e)
   {
     lock_release (&table.lock);
     return false;
   }
-  elem->status = status;
-  decrRefs (elem); 
+  e->status = status;
+  decrRefs (e); 
   lock_release (&table.lock); 
   return true;
 }

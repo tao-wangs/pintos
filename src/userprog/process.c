@@ -42,7 +42,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (program_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
 //  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -98,14 +98,6 @@ start_process (void *file_name_)
   if (!success) 
     thread_exit ();
 
-  int argc = (arguments.length / sizeof(char *));
-  for (int i = argc; i!= 0; i--) {
-  	char * argument = arguments[i];
-  	char * argument_with_null = argument + "\0";
-  	uint8_t address_with_null_pointer = uint8_t *(argument_with_null);
-  	put_user(
-  }
-  
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
