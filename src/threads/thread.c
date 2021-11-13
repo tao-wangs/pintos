@@ -107,8 +107,8 @@ thread_init (void)
   list_init (&initial_thread->priority_list);
   lock_init (&initial_thread->priority_list_lock);
   list_init (&initial_thread->file_list);
+  list_init (&initial_thread->children);
   load_avg = 0;
-  threadtable_init ();
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -116,6 +116,7 @@ thread_init (void)
 void
 thread_start (void) 
 {
+  threadtable_init ();
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);

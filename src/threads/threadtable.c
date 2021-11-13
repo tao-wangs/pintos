@@ -55,8 +55,10 @@ find (int tid)
 {
   struct threadtable_elem temp;
   temp.tid = tid;
-  return hash_entry(hash_find (&table.table, &temp.elem),
-                    struct threadtable_elem, elem);
+  struct hash_elem *e = hash_find (&table.table, &temp.elem);
+  if (!e)
+    return NULL;
+  return hash_entry(e, struct threadtable_elem, elem);
 }
 
 bool
