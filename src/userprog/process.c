@@ -505,9 +505,6 @@ setup_stack (void **esp, const char *file_name)
   uint8_t argc = 1;
   uint8_t i = 0;
 
-  //char *temp = malloc(sizeof(char) * (strlen(file_name) + 1));
-  //strlcpy(temp, file_name, strlen(file_name) + 1);
-
   // First we need to figure out how many arguments there are
   for (int i = 0; i < (int) strlen(file_name); i++) {
     if (file_name[i] == ' ') {
@@ -583,6 +580,10 @@ setup_stack (void **esp, const char *file_name)
 
   /* Used for debugging purposes later */
   //hex_dump((uint32_t) esp, *esp, 20, true);
+
+  free(temp);
+  free(tokens);
+  free(addresses);
 
   return success;
 }
