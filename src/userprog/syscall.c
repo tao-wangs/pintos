@@ -108,14 +108,20 @@ wait (pid_t pid)
 static bool 
 create (const char *file, unsigned initial_size)
 {
+  lock_acquire(&filesystem_lock);
   int32_t file_size = (int32_t) initial_size;
-  return filesys_create(file, file_size);
+  bool return_value = filesys_create(file, file_size);
+  lock_release(&filesystem_lock);
+  return return_value;
 }
 
 static bool 
 remove (const char *file)
 {
-  return filesys_remove(file);
+  lock_acquire(&filesystem_lock);
+  bool return_value = filesys_remove(file);
+  lock_release(&filesystem_lock);
+  return return_value;
 }
 static int 
 open (const char *file)
@@ -123,11 +129,17 @@ open (const char *file)
   
   struct thread *current_thread = thread_current();
   struct list *files = &current_thread->file_list;
+  lock_acquire(&filesystem_lock);
   struct file *fp = filesys_open(file);
   struct list_elem elem;
 
   struct list_elem *e;
 
+  if (fp == NULL){
+    lock_release(&filesystem_lock);
+    return -1;
+  }
+  
   // maintains the invariant that a file cannot be opened by a thread more than once simultaneously
   for(e = list_begin(files); e != list_end(files); e = list_next(e)){
     struct fd_map *current_fp = list_entry(e, struct fd_map, elem);
@@ -136,11 +148,8 @@ open (const char *file)
       break; //can break as soon as we find that fp is already open by the current thread because of our invariant
     }
   }
-
-  if (fp == NULL){
-    return -1;
-  }
-
+  lock_release(&filesystem_lock);
+  
   int current_ticks = ++fd_incr; //lock this
 
   struct fd_map current_fd_map;
@@ -150,25 +159,6 @@ open (const char *file)
   list_push_back(&(current_thread->file_list), &elem);
 
   return current_fd_map.fd;
-
-  /*struct file *file_ptr = get_corresponding_file(fd);
-
-  struct inode *inode_ptr = file_get_inode(inode_ptr);
-  struct file *return_ptr = file_open(inode_ptr);
-  
-  // Returns -1 if the file could not be open, in which case
-  // file_open will return a null pointer.
-  if(return_ptr == NULL) {
-    return -1;
-  } else {
-  // This is not a proper implementation that we should use, instead
-  // it is a temporary fix. See userprog.texi in doc directory at line
-  // 981 for details regarding casting a struct file * to get a file descriptor
-  // which is of type int. Adding the thread identifier of the current thread
-  // ensures that when a file is opened by different processes, each open 
-  // returns a new file descriptor. Also see #177 on EdStem for further details. 
-    return (int) return_ptr + current_thread->tid_t;
-  }*/
 }
 
 // This should return a pointer to the file, from its file descriptor.
@@ -185,19 +175,20 @@ get_corresponding_file (int fd) {
     }
   }
   return NULL; //this shouldnt really work, maybe fix
-
-	/*struct thread *current_thread = current_thread();
-  int current_tid_t = current_thread->tid_t;
-  // Brackets are needed because cast has a higher precedence than subtraction in c.
-  struct file *file_ptr = (struct file *) (fd - current_tid_t); 
-  */
 }
 
 static int 
 filesize (int fd)
 {
+  lock_acquire(&filesystem_lock);
   struct file *file_ptr = get_corresponding_file(fd);
-  return file_length(file_ptr);
+  if (file_ptr == NULL) {
+    lock_release(&filesystem_lock);
+    return -1;
+  }
+  int return_value = file_length(file_ptr);
+  lock_release(&filesystem_lock);
+  return return_value;
 }
 
 static int 
@@ -256,18 +247,20 @@ write (int fd, const void *buffer, unsigned length)
 static void 
 seek (int fd, unsigned position)
 {
-  
+  lock_acquire(&filesystem_lock);
   struct file *file_ptr = get_corresponding_file(fd);
   int32_t new_pos = (int32_t) position;
   file_seek(file_ptr, new_pos);
-  
+  lock_release(&filesystem_lock);
 }
 
 static unsigned 
 tell (int fd)
 {
+  lock_acquire(&filesystem_lock);
   struct file *file_ptr = get_corresponding_file(fd);
   int32_t next_byte_pos = file_tell (file_ptr);
+  lock_release(&filesystem_lock);
   return (uint32_t) next_byte_pos;
 }
 
@@ -275,6 +268,7 @@ static void
 close (int fd)
 {
   
+  lock_acquire(&filesystem_lock);
   struct file *open_file = get_corresponding_file (fd);
   
   struct list *files = &thread_current ()->file_list;
@@ -288,9 +282,8 @@ close (int fd)
     }
   }
 
-
   file_close (open_file);
-  
+  lock_acquire(&filesystem_lock);
 }
 
 void
