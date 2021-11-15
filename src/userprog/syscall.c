@@ -8,7 +8,9 @@
 #include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "threads/threadtable.h"
 
+extern struct lock filesystem_lock;
 typedef int pid_t; 
 
 static int fd_incr = 2;
