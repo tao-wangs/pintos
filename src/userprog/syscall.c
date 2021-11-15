@@ -12,6 +12,8 @@
 
 typedef int pid_t; 
 
+static int fd_incr = 2;
+
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
@@ -27,7 +29,6 @@ static int write (int fd, const void *buffer, unsigned length);
 static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
-
 static int get_user (const uint8_t *uddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 static int get_int (const uint8_t *uddr);
@@ -139,8 +140,7 @@ open (const char *file)
     return -1;
   }
 
-  //makes fd unique as timer_ticks() always increases
-  int current_ticks = timer_ticks();
+  int current_ticks = ++fd_incr; //lock this
 
   struct fd_map current_fd_map;
   current_fd_map.fp = fp;
