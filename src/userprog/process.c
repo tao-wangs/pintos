@@ -543,10 +543,9 @@ setup_stack (void **esp, const char *file_name)
   }
 
   // FAQ in spec says to decrement the stack pointer before pushing
-
   for (int i = argc - 1; i >= 0; i--) {
     *esp -= strlen(tokens[i]) + 1;
-    memcpy(*esp, &tokens[i], strlen(tokens[i] + 1));
+    memcpy(*esp, tokens[i], strlen(tokens[i]) + 1);
     addresses[i] = (int32_t) *esp;
   }
 
@@ -556,12 +555,12 @@ setup_stack (void **esp, const char *file_name)
   // rounding stack pointer to a multiple of 4
   while ((int) *esp % 4 != 0) {
     *esp -= sizeof(char);
-    memcpy(*esp, zero_ptr, sizeof(uint8_t));
+    memcpy(*esp, zero_ptr, sizeof(char));
   }
 
   // null pointer sentinel
   *esp -= sizeof(int32_t);
-  memcpy(*esp, zero_ptr, sizeof(int32_t));
+  memcpy(*esp, zero_ptr, sizeof(uint32_t));
 
   // addresses of arguments 
   for (int i = argc - 1; i >= 0; i--) {
@@ -570,9 +569,9 @@ setup_stack (void **esp, const char *file_name)
   }
 
   // pointer to first argument
-  int32_t *first_ptr = *esp;
+  int32_t first_ptr = *esp;
   *esp -= sizeof(int32_t);
-  memcpy(*esp, first_ptr, sizeof(int32_t));
+  memcpy(*esp, &first_ptr, sizeof(int32_t));
 
   // argc
   *esp -= sizeof(int32_t);
@@ -583,7 +582,7 @@ setup_stack (void **esp, const char *file_name)
   memcpy(*esp, zero_ptr, sizeof(int32_t));
 
   /* Used for debugging purposes later */
-  //hex_dump((uint32_t) esp, *esp, 20, true);
+  //hex_dump((uint32_t) esp, *esp, 32, true);
 
   free(temp);
   free(tokens);

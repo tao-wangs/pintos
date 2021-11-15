@@ -305,7 +305,7 @@ syscall_handler (struct intr_frame *f)
   void *arg1 = (void *) get_int ((uint8_t *) f->esp + 4);
   void *arg2 = (void *) get_int ((uint8_t *) f->esp + 8);
   void *arg3 = (void *) get_int ((uint8_t *) f->esp + 12);
-  printf ("REQUIRED INTERRUPT: %u\n", intr);
+  //printf ("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
       halt ();
