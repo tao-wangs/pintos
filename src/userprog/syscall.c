@@ -204,10 +204,14 @@ read (int fd, void *buffer, unsigned length)
   }
   else
   {
+    lock_acquire(&filesystem_lock);
     struct file *file_ptr = get_corresponding_file (fd);
-    if (!file_ptr)
+    if (!file_ptr) {
+      lock_release(&filesystem_lock);
       return -1; 
+    }
     bytesRead = file_read (fd, buffer, length);
+    lock_release(&filesystem_lock);
   }
   return bytesRead;
 }
