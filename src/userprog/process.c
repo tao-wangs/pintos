@@ -546,7 +546,7 @@ setup_stack (void **esp, const char *file_name)
 
   for (int i = argc - 1; i >= 0; i--) {
     *esp -= strlen(tokens[i]) + 1;
-    memcpy(*esp, tokens[i], strlen(tokens[i] + 1));
+    memcpy(*esp, &tokens[i], strlen(tokens[i] + 1));
     addresses[i] = (int32_t) *esp;
   }
 

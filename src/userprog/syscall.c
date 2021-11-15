@@ -350,7 +350,5 @@ syscall_handler (struct intr_frame *f)
       printf ("System call number not recognised\n");
       ASSERT(1==0);
   }
-
-  thread_exit ();
 }
 
