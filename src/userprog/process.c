@@ -502,8 +502,8 @@ setup_stack (void **esp, const char *file_name)
         palloc_free_page (kpage);
     }
 
-  uint8_t argc = 1;
-  uint8_t i = 0;
+  uint32_t argc = 1;
+  uint32_t i = 0;
 
   // First we need to figure out how many arguments there are
   for (int i = 0; i < (int) strlen(file_name); i++) {
@@ -550,8 +550,8 @@ setup_stack (void **esp, const char *file_name)
     addresses[i] = (int32_t) *esp;
   }
 
-  uint8_t zero = 0;
-  uint8_t *zero_ptr = &zero;
+  uint32_t zero = 0;
+  uint32_t *zero_ptr = &zero;
 
   // rounding stack pointer to a multiple of 4
   while ((int) *esp % 4 != 0) {
