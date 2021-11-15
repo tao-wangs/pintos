@@ -266,7 +266,7 @@ static unsigned
 tell (int fd)
 {
   struct file *file_ptr = get_corresponding_file(fd);
-  int32_t next_byte_pos = file_tell(file_ptr);
+  int32_t next_byte_pos = file_tell (file_ptr);
   return (uint32_t) next_byte_pos;
 }
 
@@ -274,16 +274,16 @@ static void
 close (int fd)
 {
   
-  struct file *open_file = get_corresponding_file(fd);
+  struct file *open_file = get_corresponding_file (fd);
   
-  struct list *files = &thread_current()->file_list;
+  struct list *files = &thread_current ()->file_list;
 
   struct list_elem *e;
 
-  for(e = list_begin(files); e != list_end(files); e = list_next(e)){
-    struct fd_map *current_fd_map = list_entry(e, struct fd_map, elem);
-    if(current_fd_map->fd == fd){
-      list_remove(&current_fd_map->elem);
+  for(e = list_begin (files); e != list_end (files); e = list_next (e)){
+    struct fd_map *current_fd_map = list_entry (e, struct fd_map, elem);
+    if (current_fd_map->fd == fd){
+      list_remove (&current_fd_map->elem);
     }
   }
 
@@ -302,52 +302,52 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
-  void *arg1 = (void *) get_int((uint8_t *) f->esp + 4);
-  void *arg2 = (void *) get_int((uint8_t *) f->esp + 8);
-  void *arg3 = (void *) get_int((uint8_t *) f->esp + 12);
-  printf("REQUIRED INTERRUPT: %u\n", intr);
+  void *arg1 = (void *) get_int ((uint8_t *) f->esp + 4);
+  void *arg2 = (void *) get_int ((uint8_t *) f->esp + 8);
+  void *arg3 = (void *) get_int ((uint8_t *) f->esp + 12);
+  printf ("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
-      halt();
+      halt ();
       break;
     case SYS_EXIT:
-      exit((int) arg1);
+      exit ((int) arg1);
       break;
     case SYS_EXEC:
-      exec((const char *) arg1);
+      f->eax = exec ((const char *) arg1);
       break;
     case SYS_WAIT:
-      wait((pid_t) arg1);
+      f->eax = wait ((pid_t) arg1);
       break;
     case SYS_CREATE:
-      create((const char *) arg1, (unsigned) arg2);
+      f->eax = create ((const char *) arg1, (unsigned) arg2);
       break;
     case SYS_REMOVE:
-      remove((const char *) arg1);
+      f->eax = remove ((const char *) arg1);
       break;
     case SYS_OPEN:
-      open((const char *) arg1);
+      f->eax = open ((const char *) arg1);
       break;
     case SYS_FILESIZE:
-      filesize((int) arg1);
+      f->eax = filesize ((int) arg1);
       break;
     case SYS_READ:
-      read((int) arg1, arg2, (unsigned int) arg3); 
+      f->eax = read ((int) arg1, arg2, (unsigned int) arg3); 
       break;
     case SYS_WRITE:
-      write((int) arg1, arg2, (unsigned int) arg3);
+      f->eax = write ((int) arg1, arg2, (unsigned int) arg3);
       break;
     case SYS_SEEK:
-      seek((int) arg1, (unsigned int) arg2);
+      seek ((int) arg1, (unsigned int) arg2);
       break;
     case SYS_TELL:
-      tell((int) arg1);
+      f->eax = tell ((int) arg1);
       break;
     case SYS_CLOSE:
-      close((int) arg2);
+      close ((int) arg2);
       break;
     default:
-      printf("System call number not recognised\n");
+      printf ("System call number not recognised\n");
       ASSERT(1==0);
   }
 
