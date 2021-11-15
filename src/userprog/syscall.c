@@ -202,6 +202,22 @@ filesize (int fd)
 static int 
 read (int fd, void *buffer, unsigned length)
 {
+  int bytesRead = 0;
+  if (fd == STDIN_FILENO) {
+    char *buff = (char *) buffer;
+    for (int i = 0; i < length; ++i) {
+      buff[i] = input_getc (); 
+      bytesRead++; 
+    }
+  }
+  else
+  {
+    struct file *file_ptr = get_corresponding_file (fd);
+    if (!file_ptr)
+      return -1; 
+    bytesRead = file_read (fd, buffer, length);
+  }
+  return bytesRead;
 }
 
 static int 
