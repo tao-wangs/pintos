@@ -5,7 +5,6 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
-#include "devices/timer.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
@@ -208,10 +207,9 @@ static int
 write (int fd, const void *buffer, unsigned length)
 // length is the size in bytes.
 {
-  /*
-  int remaining_length = (int) length;
+ 
   int file_size = filesize(fd);
-  const char * char_buffer = (const char *) buffer;
+  const char* char_buffer = (const char *) buffer;
   
   // This doesn't break up the larger buffers into shorter buffers correctly, as
   // the first recursive call will cause the length value to be returned, and so 
@@ -219,39 +217,24 @@ write (int fd, const void *buffer, unsigned length)
   
   // first checks if fd is set to write to the console
   if (fd == STDOUT_FILENO) {
+    int written_bytes_acc = 0;
     // Write to the console all of buffer in one call to putbuf(), at least
     // as long as the size is not bigger than a few hundred bytes.
-    if (length <= 300) {
-      putbuf((const char *) (buffer), length); // TODO: BREAKUP LARGER BUFFERS
-      return (int) length;
-    } else {
-        putbuf((const char*) (buffer), 300);
-        // This will decrement the size of the remaining bytes to be written by 300.
-        remaining_length -= 300;
-        // As each character is of size 1 byte, so we add 300 to the address of the buffer
-        // as we have already printed the first 300 bytes of the buffer to the console.
-        // write(STDOUT_FILENO, buffer + 300, remaining_length);
-        
-        if (remaining_length <= 300) {
-      	  putbuf((const char *) (buffer), remaining_length);
-          return (int) length;
-        }
+    while (length >= 256) {
+       putbuf(char_buffer , 256);
+       length -= 256;
+       written_bytes_acc += 256;
     }
+    putbuf(char_buffer, length);
+
+    return written_bytes_acc;
   }
+
   
   struct file *file_ptr = get_corresponding_file(fd);
-  // file_deny_write() has been called as so we cannot write to the open file fd.
-  if (file_ptr->deny_write) {
-    return 0;
-  }
-  
-  // The expected behaviour is to write as many bytes as possible up to end-of-file
-  // 
-  
-  return file_size;
-  
-  */
+  return file_write(file_ptr, char_buffer, length); 
 }
+
 static void 
 seek (int fd, unsigned position)
 {
