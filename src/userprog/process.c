@@ -533,7 +533,11 @@ setup_stack (void **esp, const char *file_name)
 	    token = strtok_r(temp, " ", &save_ptr);
 	  } else {
 	    token = strtok_r(NULL, " ", &save_ptr);	
-	  }
+	  } 
+    // do #define SIZE_LIMIT 128
+      if (strlen(token) * sizeof(char) > 128) {
+        printf("Size of command line argument is too big\n");
+      }
       tokens[i] = token;
       i++;	
   }
