@@ -89,6 +89,7 @@ exit (int status)
   struct thread *cur = thread_current (); 
 
   printf("%s: exit(%d)\n", cur->name, status);  
+  childExit (cur->tid, status);
 
   thread_exit();
 }
@@ -102,6 +103,7 @@ exec (const char *file)
 static int 
 wait (pid_t pid)
 {
+  return process_wait (pid);
 }
 
 static bool 

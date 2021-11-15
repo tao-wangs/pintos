@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#include "threads/threadtable.h"
 
 
 static thread_func start_process NO_RETURN;
@@ -42,9 +43,38 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+//  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
+  
+}
+
+/* Reads a byte at user virtual address UADDR.
+UADDR must be below PHYS_BASE.
+Returns the byte value if successful, -1 if a segfault
+occurred. */
+static int
+get_user (const uint8_t *uaddr)
+{
+  ASSERT (is_user_vaddr(uaddr)); //checks uaddr is below PHYS_BASE
+  int result;
+  asm ("movl $1f, %0; movzbl %1, %0; 1:"
+  : "=&a" (result) : "m" (*uaddr));
+  return result;
+}
+
+/* Writes BYTE to user address UDST.
+UDST must be below PHYS_BASE.
+Returns true if successful, false if a segfault occurred. */
+static bool
+put_user (uint8_t *udst, uint8_t byte)
+{ 
+  ASSERT (is_user_vaddr(udst)); //checks udst is below PHYS_BASE
+  int error_code;
+  asm ("movl $1f, %0; movb %b2, %1; 1:"
+  : "=&a" (error_code), "=m" (*udst) : "q" (byte));
+  return error_code != -1;
 }
 
 /* A thread function that loads a user process and starts it
@@ -88,12 +118,20 @@ start_process (void *file_name_)
  * This function will be implemented in task 2.
  * For now, it does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  while (true) {
-    
+  if (child_tid == TID_ERROR)
+    return -1;
+  threadtable_acquire (); 
+  struct threadtable_elem *elem = find (child_tid);
+  threadtable_release ();
+  if (!elem || elem->waited)
+  {
+    return -1;
   }
-  return -1;
+  sema_down (&elem->sema);
+  elem->waited = true;
+  return elem->status;
 }
 
 /* Free the current process's resources. */
@@ -102,7 +140,16 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  
+  /* Removes reference from threadtable for each child.
+     Probably should be moved. */
+  for (struct list_elem *e = list_begin (&cur->children);
+       e != list_end (&cur->children);
+       e = list_next (e))
+  {
+    struct thread *t = list_entry (e, struct thread, child_elem);
+    parentExit (t->tid);
+  }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -450,7 +497,7 @@ setup_stack (void **esp, const char *file_name)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }

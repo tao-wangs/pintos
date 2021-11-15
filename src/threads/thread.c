@@ -12,6 +12,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/threadtable.h"
 #include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -106,6 +107,7 @@ thread_init (void)
   list_init (&initial_thread->priority_list);
   lock_init (&initial_thread->priority_list_lock);
   list_init (&initial_thread->file_list);
+  list_init (&initial_thread->children);
   load_avg = 0;
 }
 
@@ -114,6 +116,7 @@ thread_init (void)
 void
 thread_start (void) 
 {
+  threadtable_init ();
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
@@ -223,10 +226,13 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
+  list_init (&t->children);
+  list_push_back (&thread_current ()->children, &t->child_elem);
   list_init (&t->priority_list);
   lock_init (&t->priority_list_lock);
 
   list_init (&t->file_list);
+  addThread (thread_current ()->tid, tid);
 
   /* Add to run queue. */
   thread_unblock (t);
