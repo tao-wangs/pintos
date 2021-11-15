@@ -227,7 +227,7 @@ write (int fd, const void *buffer, unsigned length)
     }
     putbuf(char_buffer, length);
 
-    return written_bytes_acc;
+    return written_bytes_acc += length;
   }
 
   
