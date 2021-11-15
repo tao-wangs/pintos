@@ -132,6 +132,7 @@ childExit (int tid, int status)
     return false;
   }
   e->status = status;
+  sema_up (&e->sema);
   decrRefs (e); 
   lock_release (&table.lock); 
   return true;

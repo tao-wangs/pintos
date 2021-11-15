@@ -38,6 +38,9 @@ static struct thread *idle_thread;
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
+/* Lock used by the filesystem. */
+struct lock filesystem_lock;
+
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
@@ -97,6 +100,7 @@ thread_init (void)
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
+  lock_init (&filesystem_lock);
   list_init (&ready_list);
   list_init (&all_list);
   /* Set up a thread structure for the running thread. */
