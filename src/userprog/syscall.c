@@ -220,7 +220,7 @@ static int
 write (int fd, const void *buffer, unsigned length)
 // length is the size in bytes.
 {
- 
+  lock_acquire(&filesystem_lock);
   int file_size = filesize(fd);
   const char* char_buffer = (const char *) buffer;
   
@@ -239,7 +239,7 @@ write (int fd, const void *buffer, unsigned length)
        written_bytes_acc += 256;
     }
     putbuf(char_buffer, length);
-
+    lock_release(&filesystem_lock);
     return written_bytes_acc += length;
   }
 

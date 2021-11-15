@@ -41,7 +41,6 @@ static struct thread *initial_thread;
 /* Lock used by the filesystem. */
 static struct lock filesystem_lock;
 
-
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
