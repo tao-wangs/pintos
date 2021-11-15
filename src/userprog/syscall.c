@@ -199,7 +199,7 @@ read (int fd, void *buffer, unsigned length)
   int bytesRead = 0;
   if (fd == STDIN_FILENO) {
     char *buff = (char *) buffer;
-    for (int i = 0; i < length; ++i) {
+    for (uint32_t i = 0; i < length; ++i) {
       buff[i] = input_getc (); 
       bytesRead++; 
     }
@@ -212,7 +212,7 @@ read (int fd, void *buffer, unsigned length)
       lock_release(&filesystem_lock);
       return -1; 
     }
-    bytesRead = file_read (fd, buffer, length);
+    bytesRead = file_read (file_ptr, buffer, length);
     lock_release(&filesystem_lock);
   }
   return bytesRead;
@@ -222,8 +222,7 @@ static int
 write (int fd, const void *buffer, unsigned length)
 // length is the size in bytes.
 {
-  lock_acquire(&filesystem_lock);
-  int file_size = filesize(fd);
+  // int file_size = filesize(fd);
   const char* char_buffer = (const char *) buffer;
   
   // This doesn't break up the larger buffers into shorter buffers correctly, as
@@ -241,13 +240,14 @@ write (int fd, const void *buffer, unsigned length)
        written_bytes_acc += 256;
     }
     putbuf(char_buffer, length);
-    lock_release(&filesystem_lock);
     return written_bytes_acc += length;
   }
 
-  
+  lock_acquire(&filesystem_lock);  
   struct file *file_ptr = get_corresponding_file(fd);
-  return file_write(file_ptr, char_buffer, length); 
+  int return_value = file_write(file_ptr, char_buffer, length); 
+  lock_release(&filesystem_lock);
+  return return_value;
 }
 
 static void 
