@@ -115,7 +115,10 @@ wait (pid_t pid)
 
 static bool 
 create (const char *file, unsigned initial_size)
-{
+{ 
+  if (!file) {
+    exit(-1);
+  }
   lock_acquire(&filesystem_lock);
   int32_t file_size = (int32_t) initial_size;
   bool return_value = filesys_create(file, file_size);
@@ -134,7 +137,9 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
-  
+  if (!file) {
+    exit(-1);
+  }
   struct thread *current_thread = thread_current();
   struct list *files = &current_thread->file_list;
   lock_acquire(&filesystem_lock);
