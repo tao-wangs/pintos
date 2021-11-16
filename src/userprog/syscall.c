@@ -41,7 +41,10 @@ occurred. */
 static int
 get_user (const uint8_t *uaddr)
 {
-  ASSERT (is_user_vaddr(uaddr)); //checks uaddr is below PHYS_BASE
+  //checks uaddr is below PHYS_BASE
+  if (!is_user_vaddr(uaddr)) {
+    exit(-1);
+  } 
   int result;
   asm ("movl $1f, %0; movzbl %1, %0; 1:"
   : "=&a" (result) : "m" (*uaddr));
@@ -54,7 +57,10 @@ Returns true if successful, false if a segfault occurred. */
 static bool
 put_user (uint8_t *udst, uint8_t byte)
 { 
-  ASSERT (is_user_vaddr(udst)); //checks udst is below PHYS_BASE
+  //checks udst is below PHYS_BASE
+  if (!is_user_vaddr(udst)) {
+    exit(-1);
+  } 
   int error_code;
   asm ("movl $1f, %0; movb %b2, %1; 1:"
   : "=&a" (error_code), "=m" (*udst) : "q" (byte));
@@ -107,9 +113,32 @@ wait (pid_t pid)
   return process_wait (pid);
 }
 
+static bool
+filename_valid (const char *file)
+{
+if (!file) {
+    exit(-1);
+  }
+  char buffer[15];
+  bool valid = false;
+  for (int i = 0; i < 15; ++i) {
+    buffer[i] = get_user(file + i);
+    if (buffer[i] == -1)
+      exit (-1);
+    else if (buffer[i] == 0)
+    {
+      valid = true;
+      break; 
+    }
+  } 
+  return valid;
+}
+
 static bool 
 create (const char *file, unsigned initial_size)
-{
+{ 
+  if (!filename_valid (file))
+    return false;
   lock_acquire(&filesystem_lock);
   int32_t file_size = (int32_t) initial_size;
   bool return_value = filesys_create(file, file_size);
@@ -128,37 +157,29 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
+  if (!filename_valid (file))
+    exit (-1);
   
-  struct thread *current_thread = thread_current();
-  struct list *files = &current_thread->file_list;
   lock_acquire(&filesystem_lock);
+  
   struct file *fp = filesys_open(file);
-  struct list_elem elem;
 
-  struct list_elem *e;
-
-  if (fp == NULL){
-    lock_release(&filesystem_lock);
+  if (fp == NULL){ 
     return -1;
   }
   
-  // maintains the invariant that a file cannot be opened by a thread more than once simultaneously
-  for(e = list_begin(files); e != list_end(files); e = list_next(e)){
-    struct fd_map *current_fp = list_entry(e, struct fd_map, elem);
-    if(current_fp->fp == fp){
-      file_close(fp);
-      break; //can break as soon as we find that fp is already open by the current thread because of our invariant
-    }
-  }
+  int current_ticks = ++fd_incr; 
+
   lock_release(&filesystem_lock);
-  
-  int current_ticks = ++fd_incr; //lock this
 
   struct fd_map current_fd_map;
+  struct list_elem elem;
+
   current_fd_map.fp = fp;
   current_fd_map.elem = elem;
   current_fd_map.fd = current_ticks + 2;
-  list_push_back(&(current_thread->file_list), &elem);
+
+  list_push_back(&(thread_current ()->file_list), &elem);
 
   return current_fd_map.fd;
 }
@@ -289,7 +310,8 @@ close (int fd)
   }
 
   file_close (open_file);
-  lock_acquire(&filesystem_lock);
+  
+  lock_release(&filesystem_lock);
 }
 
 void
@@ -347,8 +369,9 @@ syscall_handler (struct intr_frame *f)
       close ((int) arg2);
       break;
     default:
-      printf ("System call number not recognised\n");
-      ASSERT(1==0);
+      //printf ("System call number not recognised\n");
+      exit(-1);
+      //ASSERT(1==0);
   }
 }
 

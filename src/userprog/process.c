@@ -41,9 +41,23 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  // Temporary copy of file_name to use in strtok_r
+  // +1 because we have to take into consideration the \0 character I think?
+  // do correct me if im wrong
+  char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
+
+  strlcpy(temp, file_name, strlen(file_name) + 1);
+
+  char *save_ptr;
+  char *exe = " ";
+
+  exe = strtok_r(temp, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-//  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (exe, PRI_DEFAULT, start_process, fn_copy);
+
+  free(temp);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -274,7 +288,23 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+
+  // Temporary copy of file_name to use in strtok_r
+  // +1 because we have to take into consideration the \0 character I think?
+  // do correct me if im wrong
+  char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
+
+  strlcpy(temp, file_name, strlen(file_name) + 1);
+
+  char *save_ptr;
+  char *exe = " ";
+
+  exe = strtok_r(temp, " ", &save_ptr);
+
+  file = filesys_open (exe);
+
+  free(temp);
+
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -508,6 +538,9 @@ setup_stack (void **esp, const char *file_name)
   // First we need to figure out how many arguments there are
   for (int i = 0; i < (int) strlen(file_name); i++) {
     if (file_name[i] == ' ') {
+      if (file_name[i-1] == ' ') {
+        continue;
+      }
       argc++;
     }
   }
