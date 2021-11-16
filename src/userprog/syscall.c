@@ -41,7 +41,10 @@ occurred. */
 static int
 get_user (const uint8_t *uaddr)
 {
-  ASSERT (is_user_vaddr(uaddr)); //checks uaddr is below PHYS_BASE
+  //checks uaddr is below PHYS_BASE
+  if (!is_user_vaddr(uaddr)) {
+    exit(-1);
+  } 
   int result;
   asm ("movl $1f, %0; movzbl %1, %0; 1:"
   : "=&a" (result) : "m" (*uaddr));
@@ -54,7 +57,10 @@ Returns true if successful, false if a segfault occurred. */
 static bool
 put_user (uint8_t *udst, uint8_t byte)
 { 
-  ASSERT (is_user_vaddr(udst)); //checks udst is below PHYS_BASE
+  //checks udst is below PHYS_BASE
+  if (!is_user_vaddr(udst)) {
+    exit(-1);
+  } 
   int error_code;
   asm ("movl $1f, %0; movb %b2, %1; 1:"
   : "=&a" (error_code), "=m" (*udst) : "q" (byte));
@@ -347,8 +353,9 @@ syscall_handler (struct intr_frame *f)
       close ((int) arg2);
       break;
     default:
-      printf ("System call number not recognised\n");
-      ASSERT(1==0);
+      //printf ("System call number not recognised\n");
+      exit(-1);
+      //ASSERT(1==0);
   }
 }
 
