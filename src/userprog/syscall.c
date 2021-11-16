@@ -132,7 +132,7 @@ create (const char *file, unsigned initial_size)
     }
   } 
   if (!valid)
-    exit (-1);
+    return false;
   lock_acquire(&filesystem_lock);
   int32_t file_size = (int32_t) initial_size;
   bool return_value = filesys_create(file, file_size);
