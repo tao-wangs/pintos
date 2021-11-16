@@ -119,6 +119,20 @@ create (const char *file, unsigned initial_size)
   if (!file) {
     exit(-1);
   }
+  char buffer[15];
+  bool valid = false;
+  for (int i = 0; i < 15; ++i) {
+    buffer[i] = get_user(file + i);
+    if (buffer[i] == -1)
+      exit (-1);
+    else if (buffer[i] == 0)
+    {
+      valid = true;
+      break; 
+    }
+  } 
+  if (!valid)
+    exit (-1);
   lock_acquire(&filesystem_lock);
   int32_t file_size = (int32_t) initial_size;
   bool return_value = filesys_create(file, file_size);
