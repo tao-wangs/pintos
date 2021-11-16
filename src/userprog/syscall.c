@@ -113,10 +113,10 @@ wait (pid_t pid)
   return process_wait (pid);
 }
 
-static bool 
-create (const char *file, unsigned initial_size)
-{ 
-  if (!file) {
+static bool
+filename_valid (const char *file)
+{
+if (!file) {
     exit(-1);
   }
   char buffer[15];
@@ -131,7 +131,13 @@ create (const char *file, unsigned initial_size)
       break; 
     }
   } 
-  if (!valid)
+  return valid;
+}
+
+static bool 
+create (const char *file, unsigned initial_size)
+{ 
+  if (!filename_valid (file))
     return false;
   lock_acquire(&filesystem_lock);
   int32_t file_size = (int32_t) initial_size;
@@ -151,9 +157,8 @@ remove (const char *file)
 static int 
 open (const char *file)
 {
-  if (!file) {
-    exit(-1);
-  }
+  if (!filename_valid (file))
+    exit (-1);
   struct thread *current_thread = thread_current();
   struct list *files = &current_thread->file_list;
   lock_acquire(&filesystem_lock);
