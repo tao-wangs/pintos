@@ -156,7 +156,8 @@ remove (const char *file)
 }
 static int 
 open (const char *file)
-{
+{ 
+  //printf("Opening file: %s\n", file);
   if (!filename_valid (file))
     exit (-1);
   
@@ -165,6 +166,7 @@ open (const char *file)
   struct file *fp = filesys_open(file);
 
   if (fp == NULL){ 
+    lock_release(&filesystem_lock);
     return -1;
   }
   
@@ -172,16 +174,14 @@ open (const char *file)
 
   lock_release(&filesystem_lock);
 
-  struct fd_map current_fd_map;
-  struct list_elem elem;
+  struct fd_map fd_map;
 
-  current_fd_map.fp = fp;
-  current_fd_map.elem = elem;
-  current_fd_map.fd = current_ticks + 2;
+  fd_map.fp = fp;
+  fd_map.fd = current_ticks + 2;
 
-  list_push_back(&(thread_current ()->file_list), &elem);
+  list_push_back(&(thread_current ()->file_list), &fd_map.elem);
 
-  return current_fd_map.fd;
+  return fd_map.fd;
 }
 
 // This should return a pointer to the file, from its file descriptor.
@@ -205,7 +205,7 @@ filesize (int fd)
 {
   lock_acquire(&filesystem_lock);
   struct file *file_ptr = get_corresponding_file(fd);
-  if (file_ptr == NULL) {
+  if (!file_ptr) {
     lock_release(&filesystem_lock);
     return -1;
   }
@@ -226,17 +226,19 @@ read (int fd, void *buffer, unsigned length)
     }
   }
   else
-  {
+  { 
     lock_acquire(&filesystem_lock);
     struct file *file_ptr = get_corresponding_file (fd);
     if (!file_ptr) {
       lock_release(&filesystem_lock);
-      return -1; 
+      return -1;
     }
+
     bytesRead = file_read (file_ptr, buffer, length);
+    
     lock_release(&filesystem_lock);
   }
-  return bytesRead;
+  return bytesRead; 
 }
 
 static int 
