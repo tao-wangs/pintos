@@ -268,6 +268,10 @@ write (int fd, const void *buffer, unsigned length)
 
   lock_acquire(&filesystem_lock);  
   struct file *file_ptr = get_corresponding_file(fd);
+  if (!file_ptr) {
+    lock_release(&filesystem_lock);
+    return -1;
+  }
   int return_value = file_write(file_ptr, char_buffer, length); 
   lock_release(&filesystem_lock);
   return return_value;
