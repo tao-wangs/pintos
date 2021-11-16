@@ -538,6 +538,9 @@ setup_stack (void **esp, const char *file_name)
   // First we need to figure out how many arguments there are
   for (int i = 0; i < (int) strlen(file_name); i++) {
     if (file_name[i] == ' ') {
+      if (file_name[i-1] == ' ') {
+        continue;
+      }
       argc++;
     }
   }
