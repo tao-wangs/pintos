@@ -178,7 +178,7 @@ open (const char *file)
   current_fd_map.fp = fp;
   current_fd_map.elem = elem;
   current_fd_map.fd = current_ticks + 2;
-  
+
   list_push_back(&(thread_current ()->file_list), &elem);
 
   return current_fd_map.fd;
@@ -310,7 +310,8 @@ close (int fd)
   }
 
   file_close (open_file);
-  lock_acquire(&filesystem_lock);
+  
+  lock_release(&filesystem_lock);
 }
 
 void
