@@ -159,36 +159,27 @@ open (const char *file)
 {
   if (!filename_valid (file))
     exit (-1);
-  struct thread *current_thread = thread_current();
-  struct list *files = &current_thread->file_list;
+  
   lock_acquire(&filesystem_lock);
+  
   struct file *fp = filesys_open(file);
-  struct list_elem elem;
 
-  struct list_elem *e;
-
-  if (fp == NULL){
-    lock_release(&filesystem_lock);
+  if (fp == NULL){ 
     return -1;
   }
   
-  // maintains the invariant that a file cannot be opened by a thread more than once simultaneously
-  for(e = list_begin(files); e != list_end(files); e = list_next(e)){
-    struct fd_map *current_fp = list_entry(e, struct fd_map, elem);
-    if(current_fp->fp == fp){
-      file_close(fp);
-      break; //can break as soon as we find that fp is already open by the current thread because of our invariant
-    }
-  }
+  int current_ticks = ++fd_incr; 
+
   lock_release(&filesystem_lock);
-  
-  int current_ticks = ++fd_incr; //lock this
 
   struct fd_map current_fd_map;
+  struct list_elem elem;
+
   current_fd_map.fp = fp;
   current_fd_map.elem = elem;
   current_fd_map.fd = current_ticks + 2;
-  list_push_back(&(current_thread->file_list), &elem);
+  
+  list_push_back(&(thread_current ()->file_list), &elem);
 
   return current_fd_map.fd;
 }
