@@ -20,49 +20,8 @@
 #include "threads/malloc.h"
 #include "threads/threadtable.h"
 
-
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
-
-/* Starts a new thread running a user program loaded from
-   FILENAME.  The new thread may be scheduled (and may even exit)
-   before process_execute() returns.  Returns the new process's
-   thread id, or TID_ERROR if the thread cannot be created. */
-tid_t
-process_execute (const char *file_name) 
-{
-  char *fn_copy;
-  tid_t tid;
-
-  /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
-    return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
-
-  // Temporary copy of file_name to use in strtok_r
-  // +1 because we have to take into consideration the \0 character I think?
-  // do correct me if im wrong
-  char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
-
-  strlcpy(temp, file_name, strlen(file_name) + 1);
-
-  char *save_ptr;
-  char *exe = " ";
-
-  exe = strtok_r(temp, " ", &save_ptr);
-
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (exe, PRI_DEFAULT, start_process, fn_copy);
-
-  free(temp);
-
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
-  return tid;
-  
-}
 
 /* Reads a byte at user virtual address UADDR.
 UADDR must be below PHYS_BASE.
@@ -91,6 +50,58 @@ put_user (uint8_t *udst, uint8_t byte)
   return error_code != -1;
 }
 
+
+/* Starts a new thread running a user program loaded from
+   FILENAME.  The new thread may be scheduled (and may even exit)
+   before process_execute() returns.  Returns the new process's
+   thread id, or TID_ERROR if the thread cannot be created. */
+tid_t
+process_execute (const char *file_name) 
+{
+  char *fn_copy;
+  tid_t tid;
+
+  if (is_user_vaddr(file_name) && get_user (file_name) == -1)
+    return TID_ERROR;
+  /* Make a copy of FILE_NAME.
+     Otherwise there's a race between the caller and load(). */
+  fn_copy = palloc_get_page (0);
+  if (fn_copy == NULL)
+    return TID_ERROR;
+  strlcpy (fn_copy, file_name, PGSIZE);
+
+  // Temporary copy of file_name to use in strtok_r
+  // +1 because we have to take into consideration the \0 character I think?
+  // do correct me if im wrong
+  char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
+  
+  strlcpy(temp, file_name, strlen(file_name) + 1);
+
+  char *save_ptr;
+  char *exe = " ";
+
+  exe = strtok_r(temp, " ", &save_ptr);
+  
+  struct file *file = filesys_open (exe);
+
+  if (file == NULL){
+    //printf("invalid exe detected\n");
+    return -1;
+  }
+
+  file_close(file);
+
+  /* Create a new thread to execute FILE_NAME. */
+  tid = thread_create (exe, PRI_DEFAULT, start_process, fn_copy);
+
+  free(temp);
+
+  if (tid == TID_ERROR)
+    palloc_free_page (fn_copy); 
+  //printf("thread: %u\n", tid);
+  return tid;
+  
+}
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -161,6 +172,7 @@ process_exit (void)
        e != list_end (&cur->children);
        e = list_next (e))
   {
+    printf ("");
     struct thread *t = list_entry (e, struct thread, child_elem);
     parentExit (t->tid);
   }
@@ -302,6 +314,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   exe = strtok_r(temp, " ", &save_ptr);
 
   file = filesys_open (exe);
+  file_deny_write (file);
 
   free(temp);
 
@@ -394,7 +407,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  //file_close (file);
   return success;
 }
 
@@ -568,8 +581,9 @@ setup_stack (void **esp, const char *file_name)
 	    token = strtok_r(NULL, " ", &save_ptr);	
 	  } 
     // do #define SIZE_LIMIT 128
-      if (strlen(token) * sizeof(char) > 128) {
-        printf("Size of command line argument is too big\n");
+      if (strlen(token) * sizeof(char) > 2048) {
+        //printf("Size of command line argument is too big\n");
+	return false;
       }
       tokens[i] = token;
       i++;	
