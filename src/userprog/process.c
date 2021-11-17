@@ -20,7 +20,6 @@
 #include "threads/malloc.h"
 #include "threads/threadtable.h"
 
-
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -45,13 +44,22 @@ process_execute (const char *file_name)
   // +1 because we have to take into consideration the \0 character I think?
   // do correct me if im wrong
   char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
-
+  
   strlcpy(temp, file_name, strlen(file_name) + 1);
 
   char *save_ptr;
   char *exe = " ";
 
   exe = strtok_r(temp, " ", &save_ptr);
+  
+  struct file *file = filesys_open (exe);
+
+  if (file == NULL){
+    //printf("invalid exe detected\n");
+    return -1;
+  }
+
+  file_close(file);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (exe, PRI_DEFAULT, start_process, fn_copy);
@@ -60,6 +68,7 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  //printf("thread: %u\n", tid);
   return tid;
   
 }
@@ -568,8 +577,9 @@ setup_stack (void **esp, const char *file_name)
 	    token = strtok_r(NULL, " ", &save_ptr);	
 	  } 
     // do #define SIZE_LIMIT 128
-      if (strlen(token) * sizeof(char) > 128) {
-        printf("Size of command line argument is too big\n");
+      if (strlen(token) * sizeof(char) > 2048) {
+        //printf("Size of command line argument is too big\n");
+	return false;
       }
       tokens[i] = token;
       i++;	
