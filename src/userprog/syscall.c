@@ -270,7 +270,7 @@ write (int fd, const void *buffer, unsigned length)
     exit (-1);
   for (int i = 0; i < length; ++i)
   {
-    buff[i] = get_int (buffer + i);
+    buff[i] = get_user (buffer + i);
     if (buff[i] == -1)
     {
       free (buff);
