@@ -172,6 +172,7 @@ process_exit (void)
        e != list_end (&cur->children);
        e = list_next (e))
   {
+    printf ("");
     struct thread *t = list_entry (e, struct thread, child_elem);
     parentExit (t->tid);
   }

@@ -10,6 +10,7 @@
 #include "filesys/file.h"
 #include "threads/threadtable.h"
 #include "threads/malloc.h"
+#include <string.h>
 
 extern struct lock filesystem_lock;
 typedef int pid_t; 
@@ -117,7 +118,7 @@ wait (pid_t pid)
 static bool
 filename_valid (const char *file)
 {
-if (!file) {
+  if (!file) {
     exit(-1);
   }
   char buffer[15];
@@ -268,14 +269,21 @@ write (int fd, const void *buffer, unsigned length)
   char *buff = malloc (length);
   if (!buff)
     exit (-1);
-  for (int i = 0; i < length; ++i)
+  if (is_user_vaddr (buffer))
   {
-    buff[i] = get_user (buffer + i);
-    if (buff[i] == -1)
+    for (int i = 0; i < length; ++i)
     {
-      free (buff);
-      exit (-1);
+      buff[i] = get_user (buffer + i);
+      if (buff[i] == -1)
+      {
+        free (buff);
+        exit (-1);
+      }
     }
+  }
+  else
+  {
+    memcpy (buff, buffer, length);
   }
   
   // This doesn't break up the larger buffers into shorter buffers correctly, as
@@ -378,6 +386,7 @@ syscall_handler (struct intr_frame *f)
       f->eax = exec ((const char *) arg1);
       break;
     case SYS_WAIT:
+      f->eax = exec ((const char *) arg1);
       f->eax = wait ((pid_t) arg1);
       break;
     case SYS_CREATE:
