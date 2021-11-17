@@ -9,6 +9,7 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/threadtable.h"
+#include "threads/malloc.h"
 
 extern struct lock filesystem_lock;
 typedef int pid_t; 
@@ -217,9 +218,14 @@ filesize (int fd)
 static int 
 read (int fd, void *buffer, unsigned length)
 {
+  if (!length) 
+    return 0;
+
   int bytesRead = 0;
+  char *buff = malloc (length);
+  if (!buff)
+    exit (-1);
   if (fd == STDIN_FILENO) {
-    char *buff = (char *) buffer;
     for (uint32_t i = 0; i < length; ++i) {
       buff[i] = input_getc (); 
       bytesRead++; 
@@ -231,13 +237,23 @@ read (int fd, void *buffer, unsigned length)
     struct file *file_ptr = get_corresponding_file (fd);
     if (!file_ptr) {
       lock_release(&filesystem_lock);
+      free (buff);
       return -1;
     }
 
-    bytesRead = file_read (file_ptr, buffer, length);
+    bytesRead = file_read (file_ptr, buff, length);
     
     lock_release(&filesystem_lock);
   }
+  for (int i = 0; i < bytesRead; ++i)
+  {
+    if (!put_user(buffer + i, buff[i]))
+    {
+      free (buff);
+      exit (-1);
+    }
+  }
+  free (buff);
   return bytesRead; 
 }
 
