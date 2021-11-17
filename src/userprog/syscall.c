@@ -261,8 +261,22 @@ static int
 write (int fd, const void *buffer, unsigned length)
 // length is the size in bytes.
 {
-  // int file_size = filesize(fd);
-  const char* char_buffer = (const char *) buffer;
+  if (!buffer)
+    exit (-1);
+  if (!length)
+    return 0;
+  char *buff = malloc (length);
+  if (!buff)
+    exit (-1);
+  for (int i = 0; i < length; ++i)
+  {
+    buff[i] = get_int (buffer + i);
+    if (buff[i] == -1)
+    {
+      free (buff);
+      exit (-1);
+    }
+  }
   
   // This doesn't break up the larger buffers into shorter buffers correctly, as
   // the first recursive call will cause the length value to be returned, and so 
@@ -274,11 +288,12 @@ write (int fd, const void *buffer, unsigned length)
     // Write to the console all of buffer in one call to putbuf(), at least
     // as long as the size is not bigger than a few hundred bytes.
     while (length >= 256) {
-       putbuf(char_buffer , 256);
+       putbuf(buff , 256);
        length -= 256;
        written_bytes_acc += 256;
     }
-    putbuf(char_buffer, length);
+    putbuf(buff, length);
+    free (buff);
     return written_bytes_acc += length;
   }
 
@@ -286,10 +301,12 @@ write (int fd, const void *buffer, unsigned length)
   struct file *file_ptr = get_corresponding_file(fd);
   if (!file_ptr) {
     lock_release(&filesystem_lock);
+    free (buff);
     return -1;
   }
-  int return_value = file_write(file_ptr, char_buffer, length); 
+  int return_value = file_write(file_ptr, buff, length); 
   lock_release(&filesystem_lock);
+  free (buff);
   return return_value;
 }
 
