@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "threads/threadtable.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -97,6 +98,15 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+
+  threadtable_acquire ();
+  struct threadtable_elem *e = find (tid);
+  threadtable_release (); 
+  if (!e)
+    return -1;
+  sema_down (&e->start_sema);
+  if (!e->started)
+    return -1;
   //printf("thread: %u\n", tid);
   return tid;
   
@@ -116,9 +126,17 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-
+  //printf ("load %s returned: %d\n", file_name, success);
   /* If load failed, quit. */
   palloc_free_page (file_name);
+
+  threadtable_acquire ();
+  struct threadtable_elem *e = find (thread_current ()->tid);
+  threadtable_release (); 
+  if (!e)
+    success = false;
+  e->started = success;
+  sema_up (&e->start_sema);
   if (!success) 
     thread_exit ();
 
@@ -145,7 +163,10 @@ int
 process_wait (tid_t child_tid) 
 {
   if (child_tid == TID_ERROR)
+  {
+    //printf ("%d waiting on invalid child: child_tid -1\n", thread_current ()->tid);
     return -1;
+  }
   threadtable_acquire (); 
   struct threadtable_elem *elem = find (child_tid);
   threadtable_release ();
@@ -155,6 +176,8 @@ process_wait (tid_t child_tid)
   }
   sema_down (&elem->sema);
   elem->waited = true;
+  //if (elem->status == -1)
+    //printf ("%d waiting on child %d: status -1\n", thread_current ()->tid, child_tid);
   return elem->status;
 }
 
@@ -175,6 +198,15 @@ process_exit (void)
     e = next;
   }
   file_close (cur->file);
+  e = list_begin (&cur->file_list);
+  while (e != list_end (&cur->file_list))
+  {
+    struct list_elem *next = list_next (e);
+    struct fd_map *current_fd_map = list_entry (e, struct fd_map, elem);
+    file_close (current_fd_map->fp);
+    free (current_fd_map);
+    e = next;
+  }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -313,8 +345,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
   exe = strtok_r(temp, " ", &save_ptr);
 
   t->file = filesys_open (exe);
-  file_deny_write (t->file);
-
   free(temp);
 
   if (t->file == NULL) 
@@ -323,6 +353,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  file_deny_write (t->file);
   /* Read and verify executable header. */
   if (file_read (t->file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -556,6 +587,8 @@ setup_stack (void **esp, const char *file_name)
       argc++;
     }
   }
+  if (file_name[strlen(file_name) - 1] == ' ')
+    argc--;
 
   // Next we break up file_name into individual arguments
   char **tokens = (char **) malloc(sizeof(char *) * argc);
@@ -571,7 +604,6 @@ setup_stack (void **esp, const char *file_name)
   char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
 
   strlcpy(temp, file_name, strlen(file_name) + 1);
-
   // Tokenise the copy and add to array of tokens
   while (token != NULL && i < argc) {
     if (i == 0) {
@@ -580,12 +612,13 @@ setup_stack (void **esp, const char *file_name)
 	    token = strtok_r(NULL, " ", &save_ptr);	
 	  } 
     // do #define SIZE_LIMIT 128
-      if (strlen(token) * sizeof(char) > 2048) {
-        //printf("Size of command line argument is too big\n");
-	return false;
-      }
-      tokens[i] = token;
-      i++;	
+    if (strlen(token) * sizeof(char) > 2048)
+    {
+      //printf("Size of command line argument is too big\n");
+	  return false;
+    }
+    tokens[i] = token;
+    i++;	
   }
 
   // FAQ in spec says to decrement the stack pointer before pushing

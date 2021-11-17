@@ -7,6 +7,7 @@
 
 struct threadtable_elem {
   struct semaphore sema;
+  struct semaphore start_sema;
   struct hash_elem elem;
   struct list_elem lst_elem;
   int tid;
@@ -14,6 +15,7 @@ struct threadtable_elem {
   int status;
   int refs;
   bool waited;
+  bool started;
 };
 
 struct threadtable {
