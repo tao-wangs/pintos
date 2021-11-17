@@ -60,7 +60,6 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-
   if (is_user_vaddr(file_name) && get_user (file_name) == -1)
     return TID_ERROR;
   /* Make a copy of FILE_NAME.
@@ -168,13 +167,12 @@ process_exit (void)
   
   /* Removes reference from threadtable for each child.
      Probably should be moved. */
-  for (struct list_elem *e = list_begin (&cur->children);
-       e != list_end (&cur->children);
-       e = list_next (e))
-  {
-    printf ("");
-    struct thread *t = list_entry (e, struct thread, child_elem);
+  struct list_elem *e = list_begin (&cur->children);
+  while (e != list_end (&cur->children)) {
+    struct list_elem *next = list_next (e);
+    struct threadtable_elem *t = list_entry (e, struct threadtable_elem, lst_elem);
     parentExit (t->tid);
+    e = next;
   }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

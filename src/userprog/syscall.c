@@ -371,50 +371,49 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
-  void *arg1 = (void *) get_int ((uint8_t *) f->esp + 4);
-  void *arg2 = (void *) get_int ((uint8_t *) f->esp + 8);
-  void *arg3 = (void *) get_int ((uint8_t *) f->esp + 12);
+  //void *get_int ((uint8_t *) f->esp + 4) = (void *) get_int ((uint8_t *) f->esp + 4);
+  //void *get_int ((uint8_t *) f->esp + 8) = (void *) get_int ((uint8_t *) f->esp + 8);
+  //void *get_int ((uint8_t *) f->esp + 12) = (void *) get_int ((uint8_t *) f->esp + 12);
   //printf ("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
       halt ();
       break;
     case SYS_EXIT:
-      exit ((int) arg1);
+      exit ((int) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_EXEC:
-      f->eax = exec ((const char *) arg1);
+      f->eax = exec ((const char *) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_WAIT:
-      f->eax = exec ((const char *) arg1);
-      f->eax = wait ((pid_t) arg1);
+      f->eax = wait ((pid_t) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_CREATE:
-      f->eax = create ((const char *) arg1, (unsigned) arg2);
+      f->eax = create ((const char *) get_int ((uint8_t *) f->esp + 4), (unsigned) get_int ((uint8_t *) f->esp + 8));
       break;
     case SYS_REMOVE:
-      f->eax = remove ((const char *) arg1);
+      f->eax = remove ((const char *) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_OPEN:
-      f->eax = open ((const char *) arg1);
+      f->eax = open ((const char *) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_FILESIZE:
-      f->eax = filesize ((int) arg1);
+      f->eax = filesize ((int) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_READ:
-      f->eax = read ((int) arg1, arg2, (unsigned int) arg3); 
+      f->eax = read ((int) get_int ((uint8_t *) f->esp + 4), get_int ((uint8_t *) f->esp + 8), (unsigned int) get_int ((uint8_t *) f->esp + 12)); 
       break;
     case SYS_WRITE:
-      f->eax = write ((int) arg1, arg2, (unsigned int) arg3);
+      f->eax = write ((int) get_int ((uint8_t *) f->esp + 4), get_int ((uint8_t *) f->esp + 8), (unsigned int) get_int ((uint8_t *) f->esp + 12));
       break;
     case SYS_SEEK:
-      seek ((int) arg1, (unsigned int) arg2);
+      seek ((int) get_int ((uint8_t *) f->esp + 4), (unsigned int) get_int ((uint8_t *) f->esp + 8));
       break;
     case SYS_TELL:
-      f->eax = tell ((int) arg1);
+      f->eax = tell ((int) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_CLOSE:
-      close ((int) arg2);
+      close ((int) get_int ((uint8_t *) f->esp + 8));
       break;
     default:
       //printf ("System call number not recognised\n");
