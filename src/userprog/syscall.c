@@ -159,7 +159,6 @@ remove (const char *file)
 static int 
 open (const char *file)
 { 
-  //printf("Opening file: %s\n", file);
   if (!filename_valid (file))
     exit (-1);
   
@@ -176,14 +175,16 @@ open (const char *file)
 
   lock_release(&filesystem_lock);
 
-  struct fd_map fd_map;
+  struct fd_map *fd_map = malloc (sizeof (fd_map));
+  if (!fd_map)
+    exit (-1);
 
-  fd_map.fp = fp;
-  fd_map.fd = current_ticks + 2;
+  fd_map->fp = fp;
+  fd_map->fd = current_ticks + 2;
 
-  list_push_back(&(thread_current ()->file_list), &fd_map.elem);
+  list_push_back(&(thread_current ()->file_list), &fd_map->elem);
 
-  return fd_map.fd;
+  return fd_map->fd;
 }
 
 // This should return a pointer to the file, from its file descriptor.
@@ -266,19 +267,20 @@ write (int fd, const void *buffer, unsigned length)
     exit (-1);
   if (!length)
     return 0;
-  char *buff = malloc (length);
+  char *buff = malloc (sizeof (char) * length);
   if (!buff)
     exit (-1);
   if (is_user_vaddr (buffer))
   {
     for (int i = 0; i < length; ++i)
     {
-      buff[i] = get_user (buffer + i);
-      if (buff[i] == -1)
+      int result = get_user (buffer + i);
+      if (result == -1)
       {
         free (buff);
         exit (-1);
       }
+      buff[i] = result;
     }
   }
   else
@@ -341,7 +343,6 @@ tell (int fd)
 static void 
 close (int fd)
 {
-  
   lock_acquire(&filesystem_lock);
   struct file *open_file = get_corresponding_file (fd);
   
@@ -353,11 +354,11 @@ close (int fd)
     struct fd_map *current_fd_map = list_entry (e, struct fd_map, elem);
     if (current_fd_map->fd == fd){
       list_remove (&current_fd_map->elem);
+      free (current_fd_map);
+      break;
     }
   }
-
   file_close (open_file);
-  
   lock_release(&filesystem_lock);
 }
 

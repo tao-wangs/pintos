@@ -110,6 +110,7 @@ struct thread
     struct lock priority_list_lock;
 
     struct list file_list;              /* List files */
+    struct file *file;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

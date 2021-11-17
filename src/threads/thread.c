@@ -653,6 +653,7 @@ init_thread (struct thread *t, const char *name, int priority, int nice,
   t->nice = nice;
   t->recent_cpu = recent_cpu;
   t->magic = THREAD_MAGIC;
+  t->file = NULL;
 
   if (thread_mlfqs) {
     update_priority(t, 0);
