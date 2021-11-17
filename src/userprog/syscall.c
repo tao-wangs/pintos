@@ -20,7 +20,7 @@ static int fd_incr = 2;
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
-static void exit(int status);
+void exit(int status);
 static pid_t exec(const char *file);
 static int wait(pid_t pid);
 static bool create (const char *file, unsigned initial_size);
@@ -92,7 +92,7 @@ halt (void)
   shutdown_power_off ();
 }
 
-static void 
+void 
 exit (int status)
 {
   struct thread *cur = thread_current (); 
