@@ -21,6 +21,8 @@
 #include "threads/threadtable.h"
 #include "userprog/syscall.h"
 
+extern struct lock filesystem_lock;
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -82,14 +84,18 @@ process_execute (const char *file_name)
 
   exe = strtok_r(temp, " ", &save_ptr);
   
+  lock_acquire (&filesystem_lock);
   struct file *file = filesys_open (exe);
+  lock_release (&filesystem_lock);
 
   if (file == NULL){
     //printf("invalid exe detected\n");
     return -1;
   }
 
+  lock_acquire (&filesystem_lock);
   file_close(file);
+  lock_release (&filesystem_lock);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (exe, PRI_DEFAULT, start_process, fn_copy);
@@ -107,7 +113,6 @@ process_execute (const char *file_name)
   sema_down (&e->start_sema);
   if (!e->started)
     return -1;
-  //printf("thread: %u\n", tid);
   return tid;
   
 }
@@ -126,7 +131,6 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-  //printf ("load %s returned: %d\n", file_name, success);
   /* If load failed, quit. */
   palloc_free_page (file_name);
 
@@ -164,7 +168,6 @@ process_wait (tid_t child_tid)
 {
   if (child_tid == TID_ERROR)
   {
-    //printf ("%d waiting on invalid child: child_tid -1\n", thread_current ()->tid);
     return -1;
   }
   threadtable_acquire (); 
@@ -176,8 +179,6 @@ process_wait (tid_t child_tid)
   }
   sema_down (&elem->sema);
   elem->waited = true;
-  //if (elem->status == -1)
-    //printf ("%d waiting on child %d: status -1\n", thread_current ()->tid, child_tid);
   return elem->status;
 }
 
@@ -197,6 +198,7 @@ process_exit (void)
     parentExit (t->tid);
     e = next;
   }
+  lock_acquire (&filesystem_lock);
   file_close (cur->file);
   e = list_begin (&cur->file_list);
   while (e != list_end (&cur->file_list))
@@ -207,6 +209,7 @@ process_exit (void)
     free (current_fd_map);
     e = next;
   }
+  lock_release (&filesystem_lock);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -344,7 +347,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   exe = strtok_r(temp, " ", &save_ptr);
 
+  lock_acquire (&filesystem_lock);
   t->file = filesys_open (exe);
+  lock_release (&filesystem_lock);
   free(temp);
 
   if (t->file == NULL) 
@@ -353,6 +358,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  lock_acquire (&filesystem_lock);
   file_deny_write (t->file);
   /* Read and verify executable header. */
   if (file_read (t->file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -364,6 +370,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phnum > 1024) 
     {
       printf ("load: %s: error loading executable\n", file_name);
+      lock_release (&filesystem_lock);
       goto done; 
     }
 
@@ -374,11 +381,17 @@ load (const char *file_name, void (**eip) (void), void **esp)
       struct Elf32_Phdr phdr;
 
       if (file_ofs < 0 || file_ofs > file_length (t->file))
+      {
+        lock_release (&filesystem_lock);
         goto done;
+      }
       file_seek (t->file, file_ofs);
 
       if (file_read (t->file, &phdr, sizeof phdr) != sizeof phdr)
+      {
+        lock_release (&filesystem_lock);
         goto done;
+      }
       file_ofs += sizeof phdr;
       switch (phdr.p_type) 
         {
@@ -418,13 +431,20 @@ load (const char *file_name, void (**eip) (void), void **esp)
                 }
               if (!load_segment (t->file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
+              {
+                lock_release (&filesystem_lock);
                 goto done;
+              }
             }
           else
+          {
+            lock_release (&filesystem_lock);
             goto done;
+          }
           break;
         }
     }
+    lock_release (&filesystem_lock);
 
   /* Set up stack. */
   if (!setup_stack (esp, file_name))

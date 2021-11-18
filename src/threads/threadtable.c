@@ -1,5 +1,6 @@
 #include "threads/threadtable.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 struct threadtable table;
 

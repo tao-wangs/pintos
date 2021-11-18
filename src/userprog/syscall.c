@@ -244,7 +244,6 @@ read (int fd, void *buffer, unsigned length)
     }
 
     bytesRead = file_read (file_ptr, buff, length);
-    
     lock_release(&filesystem_lock);
   }
   for (int i = 0; i < bytesRead; ++i)

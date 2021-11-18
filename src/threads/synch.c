@@ -210,11 +210,13 @@ lock_obtain (struct lock *lock)
 {
   int old_level = intr_disable ();
   lock->holder = thread_current ();
+  //printf ("%d entered lock obtain for lock %p\n", thread_current ()->tid, lock);
   for (struct list_elem *e = list_begin (&lock->semaphore.waiters);
        e != list_end (&lock->semaphore.waiters);
        e = list_next (e))
   {
     struct thread *t = list_entry(e, struct thread, elem);
+    printf ("in lock obtain head %d is waiting on %p\n", t->tid, lock);
     thread_donate (t, thread_current ());
   }
   intr_set_level (old_level);
@@ -234,14 +236,16 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-  if (!sema_try_down (&lock->semaphore))
+  //int old_level = intr_disable ();
+  /*if (!sema_try_down (&lock->semaphore))
   {
-    int old_level = intr_disable ();
     thread_donate (thread_current (), lock->holder);
-    intr_set_level (old_level);
     sema_down (&lock->semaphore);
   }
   lock_obtain(lock); 
+  intr_set_level (old_level);*/
+  sema_down (&lock->semaphore);
+  lock->holder = thread_current ();
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -259,8 +263,9 @@ lock_try_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   success = sema_try_down (&lock->semaphore);
-  if (success)
-    lock_obtain(lock); 
+  lock->holder = thread_current ();
+  //if (success)
+  //  lock_obtain(lock); 
   return success;
 }
 
@@ -274,16 +279,18 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-  int old_level = intr_disable ();
+  /*int old_level = intr_disable ();
   for (struct list_elem *e = list_begin (&lock->semaphore.waiters);
        e != list_end (&lock->semaphore.waiters);
        e = list_next (e))
   {
+    printf ("%p prev %p next %p\n", e, e->prev, e->next);
     thread_remove_donation (list_entry(e, struct thread, elem));
-  }
+    printf ("removed donation\n");
+  }*/
   lock->holder = NULL;
-  intr_set_level (old_level);
   sema_up (&lock->semaphore);
+  //intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
