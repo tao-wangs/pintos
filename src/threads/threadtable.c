@@ -2,6 +2,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 
+/* Thread hash table */
 struct threadtable table;
 
 static unsigned 
@@ -20,18 +21,21 @@ thread_less (const struct hash_elem *a,
        < hash_entry (b, struct threadtable_elem, elem)->tid;
 }
 
+/* Acquire thread table lock. */
 void 
 threadtable_acquire (void)
 {
   lock_acquire (&table.lock);
 }
 
+/* Release thread table lock. */
 void
 threadtable_release (void)
 {
   lock_release (&table.lock);
 }
 
+/* Initialise thread table. */
 void
 threadtable_init (void)
 {
@@ -39,12 +43,14 @@ threadtable_init (void)
   lock_init (&table.lock);
 }
 
+/* Destroy thread table elem, freeing its resources. */
 static void
 threadtable_elem_destroy (struct hash_elem *e, void *aux UNUSED)
 {
   free (hash_entry (e, struct threadtable_elem, elem));
 }
 
+/* Destroy thread table, freeing its resources. */
 void
 threadtable_destroy (void)
 {
