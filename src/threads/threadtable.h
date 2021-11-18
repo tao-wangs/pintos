@@ -19,8 +19,8 @@ struct threadtable_elem {
 };
 
 struct threadtable {
-  struct hash table; /* Stores elems in a hashtable for fast lookup */
-  struct lock lock; /* Synchronises access to threadtable */
+  struct hash table;        /* Stores elems in a hashtable for fast lookup */
+  struct lock lock;         /* Synchronises access to threadtable */
 };
 
 void threadtable_acquire (void);

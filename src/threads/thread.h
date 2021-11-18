@@ -104,19 +104,19 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    struct list priority_list;             /* List donated priorities. */
+    struct list priority_list;          /* List donated priorities. */
     struct list_elem priority_elem;
-    struct thread *donated_to;            /* The thread this thread has donated to. */
+    struct thread *donated_to;          /* The thread this thread has donated to. */
     struct lock priority_list_lock;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     
-    struct list children;
+    struct list children;               /* Child processes */
 
-    struct list file_list;              /* List files */
-    struct file *file;
+    struct list file_list;              /* List of open files */
+    struct file *file;                  /* File kept open */
 #endif
 
     /* Owned by thread.c. */

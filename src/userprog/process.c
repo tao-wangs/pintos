@@ -44,14 +44,16 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
+  /* Extract executable name from file_name */
   
-  strlcpy(temp, file_name, strlen(file_name) + 1);
+  char *temp = (char *) malloc (sizeof(char) * (strlen (file_name) + 1));
+  
+  strlcpy (temp, file_name, strlen(file_name) + 1);
 
   char *save_ptr;
   char *exe = " ";
 
-  exe = strtok_r(temp, " ", &save_ptr);
+  exe = strtok_r (temp, " ", &save_ptr);
   
   lock_acquire (&filesystem_lock);
   struct file *file = filesys_open (exe);
@@ -62,13 +64,15 @@ process_execute (const char *file_name)
   }
 
   lock_acquire (&filesystem_lock);
-  file_close(file);
+  
+  file_close (file);
+  
   lock_release (&filesystem_lock);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (exe, PRI_DEFAULT, start_process, fn_copy);
 
-  free(temp);
+  free (temp);
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -76,6 +80,7 @@ process_execute (const char *file_name)
   threadtable_acquire ();
   struct threadtable_elem *e = find (tid);
   threadtable_release (); 
+  
   if (!e)
     return -1;
   sema_down (&e->start_sema);
@@ -105,10 +110,12 @@ start_process (void *file_name_)
   threadtable_acquire ();
   struct threadtable_elem *e = find (thread_current ()->tid);
   threadtable_release (); 
+  
   if (!e)
     success = false;
   e->started = success;
   sema_up (&e->start_sema);
+  
   if (!success) 
     thread_exit ();
 
@@ -556,7 +563,7 @@ setup_stack (void **esp, const char *file_name)
   uint32_t i = 0;
 
   // First we need to figure out how many arguments there are
-  for (int i = 0; i < (int) strlen(file_name); i++) {
+  for (int i = 0; i < (int) strlen (file_name); i++) {
     if (file_name[i] == ' ') {
       if (file_name[i-1] == ' ') {
         continue;
@@ -566,17 +573,17 @@ setup_stack (void **esp, const char *file_name)
   }
 
   // This checks for whitespace at the end of the command line 
-  if (file_name[strlen(file_name) - 1] == ' ')
+  if (file_name[strlen (file_name) - 1] == ' ')
     argc--;
 
   // Next we break up file_name into individual arguments
-  char **tokens = (char **) malloc(sizeof(char *) * argc);
+  char **tokens = (char **) malloc (sizeof(char *) * argc);
 
   if (!tokens) {
     return false;
   }
 
-  int32_t *addresses = (int32_t *) calloc(argc, sizeof(int32_t));
+  int32_t *addresses = (int32_t *) calloc (argc, sizeof(int32_t));
 
   if (!addresses) {
     return false;
@@ -588,23 +595,23 @@ setup_stack (void **esp, const char *file_name)
   // Temporary copy of file_name to use in strtok_r
   // +1 because we have to take into consideration the \0 character I think?
   // do correct me if im wrong
-  char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
+  char *temp = (char *) malloc (sizeof(char) * (strlen (file_name) + 1));
 
   if (!temp) {
     return false;
   }
 
-  strlcpy(temp, file_name, strlen(file_name) + 1);
+  strlcpy (temp, file_name, strlen(file_name) + 1);
   
   // Tokenise the copy and add to array of tokens
   while (token != NULL && i < argc) {
     if (i == 0) {
-	    token = strtok_r(temp, " ", &save_ptr);
+	    token = strtok_r (temp, " ", &save_ptr);
 	  } else {
-	    token = strtok_r(NULL, " ", &save_ptr);	
+	    token = strtok_r (NULL, " ", &save_ptr);	
 	  } 
     // do #define SIZE_LIMIT 128
-    if ((strlen(token) + 1) * sizeof(char) > 512)
+    if ((strlen (token) + 1) * sizeof(char) > 512)
     {
       //printf("Size of command line argument is too big\n");
 	  return false;
@@ -615,8 +622,8 @@ setup_stack (void **esp, const char *file_name)
 
   // FAQ in spec says to decrement the stack pointer before pushing
   for (int i = argc - 1; i >= 0; i--) {
-    *esp -= strlen(tokens[i]) + 1;
-    memcpy(*esp, tokens[i], strlen(tokens[i]) + 1);
+    *esp -= strlen (tokens[i]) + 1;
+    memcpy (*esp, tokens[i], strlen (tokens[i]) + 1);
     addresses[i] = (int32_t) *esp;
   }
 
@@ -626,39 +633,39 @@ setup_stack (void **esp, const char *file_name)
   // rounding stack pointer to a multiple of 4
   while ((int) *esp % 4 != 0) {
     *esp -= sizeof(char);
-    memcpy(*esp, zero_ptr, sizeof(char));
+    memcpy (*esp, zero_ptr, sizeof(char));
   }
 
   // null pointer sentinel
   *esp -= sizeof(int32_t);
-  memcpy(*esp, zero_ptr, sizeof(uint32_t));
+  memcpy (*esp, zero_ptr, sizeof(uint32_t));
 
   // addresses of arguments 
   for (int i = argc - 1; i >= 0; i--) {
     *esp -= sizeof(int32_t);
-    memcpy(*esp, &addresses[i], sizeof(int32_t));
+    memcpy (*esp, &addresses[i], sizeof(int32_t));
   }
 
   // pointer to first argument
   int32_t first_ptr = (int32_t) *esp;
   *esp -= sizeof(int32_t);
-  memcpy(*esp, &first_ptr, sizeof(int32_t));
+  memcpy (*esp, &first_ptr, sizeof(int32_t));
 
   // argc
   *esp -= sizeof(int32_t);
-  memcpy(*esp, &argc, sizeof(int32_t));
+  memcpy (*esp, &argc, sizeof(int32_t));
 
   // fake return address 0
   *esp -= sizeof(int32_t);
-  memcpy(*esp, zero_ptr, sizeof(int32_t));
+  memcpy (*esp, zero_ptr, sizeof(int32_t));
 
   // free resources
-  free(temp);
-  free(tokens);
-  free(addresses);
+  free (temp);
+  free (tokens);
+  free (addresses);
   
   // check for stack overflow
-  if ((int) (PHYS_BASE - (int) *esp) > 4096 - sizeof(struct thread)) {
+  if ((int) (PHYS_BASE - *esp) > (int) (4096 - sizeof(struct thread))) {
     return false;
   }  
 
