@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
+#include "devices/input.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
@@ -32,15 +33,12 @@ static int write (int fd, const void *buffer, unsigned length);
 static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
-static int get_user (const uint8_t *uddr);
-static bool put_user (uint8_t *udst, uint8_t byte);
-static int get_int (const uint8_t *uddr);
 
 /* Reads a byte at user virtual address UADDR.
 UADDR must be below PHYS_BASE.
 Returns the byte value if successful, -1 if a segfault
 occurred. */
-static int
+int
 get_user (const uint8_t *uaddr)
 {
   //checks uaddr is below PHYS_BASE
@@ -56,7 +54,7 @@ get_user (const uint8_t *uaddr)
 /* Writes BYTE to user address UDST.
 UDST must be below PHYS_BASE.
 Returns true if successful, false if a segfault occurred. */
-static bool
+bool
 put_user (uint8_t *udst, uint8_t byte)
 { 
   //checks udst is below PHYS_BASE
@@ -70,7 +68,7 @@ put_user (uint8_t *udst, uint8_t byte)
 }
 
 /* Reads 4 bytes at user virtual address UADDR. */
-static int
+int
 get_int (const uint8_t *uaddr)
 {
   int result = 0;
@@ -124,7 +122,7 @@ filename_valid (const char *file)
   char buffer[15];
   bool valid = false;
   for (int i = 0; i < 15; ++i) {
-    buffer[i] = get_user(file + i);
+    buffer[i] = get_user((const uint8_t *) file + i);
     if (buffer[i] == -1)
       exit (-1);
     else if (buffer[i] == 0)
@@ -271,7 +269,7 @@ write (int fd, const void *buffer, unsigned length)
     exit (-1);
   if (is_user_vaddr (buffer))
   {
-    for (int i = 0; i < length; ++i)
+    for (unsigned int i = 0; i < length; ++i)
     {
       int result = get_user (buffer + i);
       if (result == -1)
