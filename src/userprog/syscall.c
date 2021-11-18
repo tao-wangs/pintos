@@ -20,7 +20,7 @@ static int fd_incr = 2;
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
-static void exit(int status);
+void exit(int status);
 static pid_t exec(const char *file);
 static int wait(pid_t pid);
 static bool create (const char *file, unsigned initial_size);
@@ -92,7 +92,7 @@ halt (void)
   shutdown_power_off ();
 }
 
-static void 
+void 
 exit (int status)
 {
   struct thread *cur = thread_current (); 
@@ -159,7 +159,6 @@ remove (const char *file)
 static int 
 open (const char *file)
 { 
-  //printf("Opening file: %s\n", file);
   if (!filename_valid (file))
     exit (-1);
   
@@ -176,14 +175,16 @@ open (const char *file)
 
   lock_release(&filesystem_lock);
 
-  struct fd_map fd_map;
+  struct fd_map *fd_map = malloc (sizeof (fd_map));
+  if (!fd_map)
+    exit (-1);
 
-  fd_map.fp = fp;
-  fd_map.fd = current_ticks + 2;
+  fd_map->fp = fp;
+  fd_map->fd = current_ticks + 2;
 
-  list_push_back(&(thread_current ()->file_list), &fd_map.elem);
+  list_push_back(&(thread_current ()->file_list), &fd_map->elem);
 
-  return fd_map.fd;
+  return fd_map->fd;
 }
 
 // This should return a pointer to the file, from its file descriptor.
@@ -243,7 +244,6 @@ read (int fd, void *buffer, unsigned length)
     }
 
     bytesRead = file_read (file_ptr, buff, length);
-    
     lock_release(&filesystem_lock);
   }
   for (int i = 0; i < bytesRead; ++i)
@@ -266,19 +266,20 @@ write (int fd, const void *buffer, unsigned length)
     exit (-1);
   if (!length)
     return 0;
-  char *buff = malloc (length);
+  char *buff = malloc (sizeof (char) * length);
   if (!buff)
     exit (-1);
   if (is_user_vaddr (buffer))
   {
     for (int i = 0; i < length; ++i)
     {
-      buff[i] = get_user (buffer + i);
-      if (buff[i] == -1)
+      int result = get_user (buffer + i);
+      if (result == -1)
       {
         free (buff);
         exit (-1);
       }
+      buff[i] = result;
     }
   }
   else
@@ -341,7 +342,6 @@ tell (int fd)
 static void 
 close (int fd)
 {
-  
   lock_acquire(&filesystem_lock);
   struct file *open_file = get_corresponding_file (fd);
   
@@ -353,11 +353,11 @@ close (int fd)
     struct fd_map *current_fd_map = list_entry (e, struct fd_map, elem);
     if (current_fd_map->fd == fd){
       list_remove (&current_fd_map->elem);
+      free (current_fd_map);
+      break;
     }
   }
-
   file_close (open_file);
-  
   lock_release(&filesystem_lock);
 }
 
@@ -371,50 +371,49 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
-  void *arg1 = (void *) get_int ((uint8_t *) f->esp + 4);
-  void *arg2 = (void *) get_int ((uint8_t *) f->esp + 8);
-  void *arg3 = (void *) get_int ((uint8_t *) f->esp + 12);
+  //void *get_int ((uint8_t *) f->esp + 4) = (void *) get_int ((uint8_t *) f->esp + 4);
+  //void *get_int ((uint8_t *) f->esp + 8) = (void *) get_int ((uint8_t *) f->esp + 8);
+  //void *get_int ((uint8_t *) f->esp + 12) = (void *) get_int ((uint8_t *) f->esp + 12);
   //printf ("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
       halt ();
       break;
     case SYS_EXIT:
-      exit ((int) arg1);
+      exit ((int) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_EXEC:
-      f->eax = exec ((const char *) arg1);
+      f->eax = exec ((const char *) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_WAIT:
-      f->eax = exec ((const char *) arg1);
-      f->eax = wait ((pid_t) arg1);
+      f->eax = wait ((pid_t) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_CREATE:
-      f->eax = create ((const char *) arg1, (unsigned) arg2);
+      f->eax = create ((const char *) get_int ((uint8_t *) f->esp + 4), (unsigned) get_int ((uint8_t *) f->esp + 8));
       break;
     case SYS_REMOVE:
-      f->eax = remove ((const char *) arg1);
+      f->eax = remove ((const char *) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_OPEN:
-      f->eax = open ((const char *) arg1);
+      f->eax = open ((const char *) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_FILESIZE:
-      f->eax = filesize ((int) arg1);
+      f->eax = filesize ((int) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_READ:
-      f->eax = read ((int) arg1, arg2, (unsigned int) arg3); 
+      f->eax = read ((int) get_int ((uint8_t *) f->esp + 4), get_int ((uint8_t *) f->esp + 8), (unsigned int) get_int ((uint8_t *) f->esp + 12)); 
       break;
     case SYS_WRITE:
-      f->eax = write ((int) arg1, arg2, (unsigned int) arg3);
+      f->eax = write ((int) get_int ((uint8_t *) f->esp + 4), get_int ((uint8_t *) f->esp + 8), (unsigned int) get_int ((uint8_t *) f->esp + 12));
       break;
     case SYS_SEEK:
-      seek ((int) arg1, (unsigned int) arg2);
+      seek ((int) get_int ((uint8_t *) f->esp + 4), (unsigned int) get_int ((uint8_t *) f->esp + 8));
       break;
     case SYS_TELL:
-      f->eax = tell ((int) arg1);
+      f->eax = tell ((int) get_int ((uint8_t *) f->esp + 4));
       break;
     case SYS_CLOSE:
-      close ((int) arg2);
+      close ((int) get_int ((uint8_t *) f->esp + 8));
       break;
     default:
       //printf ("System call number not recognised\n");

@@ -7,12 +7,15 @@
 
 struct threadtable_elem {
   struct semaphore sema;
+  struct semaphore start_sema;
   struct hash_elem elem;
+  struct list_elem lst_elem;
   int tid;
   int parent_tid;
   int status;
   int refs;
   bool waited;
+  bool started;
 };
 
 struct threadtable {
@@ -32,7 +35,7 @@ struct threadtable_elem * find (int tid);
 
 bool isChild (int parent_tid, int child_tid);
 
-bool addThread (int parent_tid, int child_tid);
+struct threadtable_elem * addThread (int parent_tid, int child_tid);
 
 bool parentExit (int child_tid);
 

@@ -1,5 +1,6 @@
 #include "threads/threadtable.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 struct threadtable table;
 
@@ -70,29 +71,31 @@ isChild (int parent_tid, int child_tid)
   return e != NULL && e->parent_tid == parent_tid;
 }
 
-bool
+struct threadtable_elem*
 addThread (int parent_tid, int child_tid)
 {
   lock_acquire (&table.lock);
   if (find (child_tid))
   {
     lock_release (&table.lock);
-    return false; 
+    return NULL; 
   }
   struct threadtable_elem *elem = malloc (sizeof(struct threadtable_elem));
   if (!elem)
   {
     lock_release (&table.lock);
-    return false;
+    return NULL;
   }
   sema_init (&elem->sema, 0);
+  sema_init (&elem->start_sema, 0);
   elem->tid = child_tid;
   elem->parent_tid = parent_tid;
   elem->refs = 2;
   elem->waited = false;
+  elem->started = false;
   hash_insert (&table.table, &elem->elem);
   lock_release (&table.lock); 
-  return true;
+  return elem;
 }
 
 static void

@@ -19,6 +19,9 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "threads/threadtable.h"
+#include "userprog/syscall.h"
+
+extern struct lock filesystem_lock;
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -60,7 +63,6 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-
   if (is_user_vaddr(file_name) && get_user (file_name) == -1)
     return TID_ERROR;
   /* Make a copy of FILE_NAME.
@@ -82,14 +84,18 @@ process_execute (const char *file_name)
 
   exe = strtok_r(temp, " ", &save_ptr);
   
+  lock_acquire (&filesystem_lock);
   struct file *file = filesys_open (exe);
+  lock_release (&filesystem_lock);
 
   if (file == NULL){
     //printf("invalid exe detected\n");
     return -1;
   }
 
+  lock_acquire (&filesystem_lock);
   file_close(file);
+  lock_release (&filesystem_lock);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (exe, PRI_DEFAULT, start_process, fn_copy);
@@ -98,7 +104,15 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
-  //printf("thread: %u\n", tid);
+
+  threadtable_acquire ();
+  struct threadtable_elem *e = find (tid);
+  threadtable_release (); 
+  if (!e)
+    return -1;
+  sema_down (&e->start_sema);
+  if (!e->started)
+    return -1;
   return tid;
   
 }
@@ -117,9 +131,16 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-
   /* If load failed, quit. */
   palloc_free_page (file_name);
+
+  threadtable_acquire ();
+  struct threadtable_elem *e = find (thread_current ()->tid);
+  threadtable_release (); 
+  if (!e)
+    success = false;
+  e->started = success;
+  sema_up (&e->start_sema);
   if (!success) 
     thread_exit ();
 
@@ -146,7 +167,9 @@ int
 process_wait (tid_t child_tid) 
 {
   if (child_tid == TID_ERROR)
+  {
     return -1;
+  }
   threadtable_acquire (); 
   struct threadtable_elem *elem = find (child_tid);
   threadtable_release ();
@@ -168,14 +191,25 @@ process_exit (void)
   
   /* Removes reference from threadtable for each child.
      Probably should be moved. */
-  for (struct list_elem *e = list_begin (&cur->children);
-       e != list_end (&cur->children);
-       e = list_next (e))
-  {
-    printf ("");
-    struct thread *t = list_entry (e, struct thread, child_elem);
+  struct list_elem *e = list_begin (&cur->children);
+  while (e != list_end (&cur->children)) {
+    struct list_elem *next = list_next (e);
+    struct threadtable_elem *t = list_entry (e, struct threadtable_elem, lst_elem);
     parentExit (t->tid);
+    e = next;
   }
+  lock_acquire (&filesystem_lock);
+  file_close (cur->file);
+  e = list_begin (&cur->file_list);
+  while (e != list_end (&cur->file_list))
+  {
+    struct list_elem *next = list_next (e);
+    struct fd_map *current_fd_map = list_entry (e, struct fd_map, elem);
+    file_close (current_fd_map->fp);
+    free (current_fd_map);
+    e = next;
+  }
+  lock_release (&filesystem_lock);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -288,7 +322,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
-  struct file *file = NULL;
+  //struct file *file = NULL;
   off_t file_ofs;
   bool success = false;
   int i;
@@ -313,19 +347,21 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   exe = strtok_r(temp, " ", &save_ptr);
 
-  file = filesys_open (exe);
-  file_deny_write (file);
-
+  lock_acquire (&filesystem_lock);
+  t->file = filesys_open (exe);
+  lock_release (&filesystem_lock);
   free(temp);
 
-  if (file == NULL) 
+  if (t->file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
 
+  lock_acquire (&filesystem_lock);
+  file_deny_write (t->file);
   /* Read and verify executable header. */
-  if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
+  if (file_read (t->file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
       || ehdr.e_type != 2
       || ehdr.e_machine != 3
@@ -334,6 +370,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phnum > 1024) 
     {
       printf ("load: %s: error loading executable\n", file_name);
+      lock_release (&filesystem_lock);
       goto done; 
     }
 
@@ -343,12 +380,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
     {
       struct Elf32_Phdr phdr;
 
-      if (file_ofs < 0 || file_ofs > file_length (file))
+      if (file_ofs < 0 || file_ofs > file_length (t->file))
+      {
+        lock_release (&filesystem_lock);
         goto done;
-      file_seek (file, file_ofs);
+      }
+      file_seek (t->file, file_ofs);
 
-      if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
+      if (file_read (t->file, &phdr, sizeof phdr) != sizeof phdr)
+      {
+        lock_release (&filesystem_lock);
         goto done;
+      }
       file_ofs += sizeof phdr;
       switch (phdr.p_type) 
         {
@@ -364,7 +407,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
         case PT_SHLIB:
           goto done;
         case PT_LOAD:
-          if (validate_segment (&phdr, file)) 
+          if (validate_segment (&phdr, t->file)) 
             {
               bool writable = (phdr.p_flags & PF_W) != 0;
               uint32_t file_page = phdr.p_offset & ~PGMASK;
@@ -386,15 +429,22 @@ load (const char *file_name, void (**eip) (void), void **esp)
                   read_bytes = 0;
                   zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
                 }
-              if (!load_segment (file, file_page, (void *) mem_page,
+              if (!load_segment (t->file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
+              {
+                lock_release (&filesystem_lock);
                 goto done;
+              }
             }
           else
+          {
+            lock_release (&filesystem_lock);
             goto done;
+          }
           break;
         }
     }
+    lock_release (&filesystem_lock);
 
   /* Set up stack. */
   if (!setup_stack (esp, file_name))
@@ -557,6 +607,8 @@ setup_stack (void **esp, const char *file_name)
       argc++;
     }
   }
+  if (file_name[strlen(file_name) - 1] == ' ')
+    argc--;
 
   // Next we break up file_name into individual arguments
   char **tokens = (char **) malloc(sizeof(char *) * argc);
@@ -572,7 +624,6 @@ setup_stack (void **esp, const char *file_name)
   char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
 
   strlcpy(temp, file_name, strlen(file_name) + 1);
-
   // Tokenise the copy and add to array of tokens
   while (token != NULL && i < argc) {
     if (i == 0) {
@@ -581,12 +632,13 @@ setup_stack (void **esp, const char *file_name)
 	    token = strtok_r(NULL, " ", &save_ptr);	
 	  } 
     // do #define SIZE_LIMIT 128
-      if (strlen(token) * sizeof(char) > 2048) {
-        //printf("Size of command line argument is too big\n");
-	return false;
-      }
-      tokens[i] = token;
-      i++;	
+    if (strlen(token) * sizeof(char) > 2048)
+    {
+      //printf("Size of command line argument is too big\n");
+	  return false;
+    }
+    tokens[i] = token;
+    i++;	
   }
 
   // FAQ in spec says to decrement the stack pointer before pushing
