@@ -202,9 +202,10 @@ get_corresponding_file (int fd) {
       return current_fd_map->fp;
     }
   }
+
   return NULL; 
 }
-
+/* Returns size of file open as fd in bytes */
 static int 
 filesize (int fd)
 {
@@ -219,6 +220,8 @@ filesize (int fd)
   return return_value;
 }
 
+/* reads size bytes from the file open as fd into buffer
+ * returns number of bytes read */
 static int 
 read (int fd, void *buffer, unsigned length)
 {
