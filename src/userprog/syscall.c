@@ -18,6 +18,7 @@ typedef int pid_t;
 
 static int fd_incr = 2;
 
+
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
@@ -83,6 +84,7 @@ get_int (const uint8_t *uaddr)
   }
   return result;
 }
+
 
 static void 
 halt (void)
@@ -198,7 +200,7 @@ get_corresponding_file (int fd) {
       return current_fd_map->fp;
     }
   }
-  return NULL; //this shouldnt really work, maybe fix
+  return NULL; 
 }
 
 static int 
@@ -373,7 +375,6 @@ syscall_handler (struct intr_frame *f)
   void *arg1 = (void *) get_int ((uint8_t *) f->esp + 4);
   void *arg2 = (void *) get_int ((uint8_t *) f->esp + 8);
   void *arg3 = (void *) get_int ((uint8_t *) f->esp + 12);
-  //printf ("REQUIRED INTERRUPT: %u\n", intr);
   switch (intr) {
     case SYS_HALT:
       halt ();
@@ -415,9 +416,7 @@ syscall_handler (struct intr_frame *f)
       close ((int) arg2);
       break;
     default:
-      //printf ("System call number not recognised\n");
       exit(-1);
-      //ASSERT(1==0);
   }
 }
 
