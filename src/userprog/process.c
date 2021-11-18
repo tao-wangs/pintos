@@ -370,7 +370,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phnum > 1024) 
     {
       printf ("load: %s: error loading executable\n", file_name);
-      lock_release (&filesystem_lock);
       goto done; 
     }
 
@@ -382,14 +381,12 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
       if (file_ofs < 0 || file_ofs > file_length (t->file))
       {
-        lock_release (&filesystem_lock);
         goto done;
       }
       file_seek (t->file, file_ofs);
 
       if (file_read (t->file, &phdr, sizeof phdr) != sizeof phdr)
       {
-        lock_release (&filesystem_lock);
         goto done;
       }
       file_ofs += sizeof phdr;
@@ -432,19 +429,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
               if (!load_segment (t->file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
               {
-                lock_release (&filesystem_lock);
                 goto done;
               }
             }
           else
           {
-            lock_release (&filesystem_lock);
             goto done;
           }
           break;
         }
     }
-    lock_release (&filesystem_lock);
 
   /* Set up stack. */
   if (!setup_stack (esp, file_name))
@@ -457,7 +451,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  //file_close (file);
+  lock_release (&filesystem_lock);
   return success;
 }
 
@@ -632,7 +626,7 @@ setup_stack (void **esp, const char *file_name)
 	    token = strtok_r(NULL, " ", &save_ptr);	
 	  } 
     // do #define SIZE_LIMIT 128
-    if (strlen(token) * sizeof(char) > 2048)
+    if ((strlen(token) + 1) * sizeof(char) > 512)
     {
       //printf("Size of command line argument is too big\n");
 	  return false;
@@ -686,6 +680,10 @@ setup_stack (void **esp, const char *file_name)
   free(temp);
   free(tokens);
   free(addresses);
+
+  if ((PHYS_BASE - (int) *esp) > 4096) {
+    return false;
+  }  
 
   return success;
 }
