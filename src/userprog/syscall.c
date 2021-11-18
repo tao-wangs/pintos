@@ -13,7 +13,7 @@
 #include "threads/malloc.h"
 #include <string.h>
 
-extern struct lock filesystem_lock;
+struct lock filesystem_lock;
 typedef int pid_t; 
 
 static int fd_incr = 2;
@@ -362,6 +362,7 @@ close (int fd)
 void
 syscall_init (void) 
 {
+  lock_init (&filesystem_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
