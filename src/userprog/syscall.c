@@ -103,6 +103,8 @@ exit (int status)
   thread_exit();
 }
 
+/* Executes the program with the file name file
+ * Returns the thread/process id*/
 static pid_t 
 exec (const char *file)
 {
@@ -258,6 +260,8 @@ read (int fd, void *buffer, unsigned length)
   return bytesRead; 
 }
 
+/* Writes to the given fd, breaks up the buffer if the fd is the console
+ * Returns number of bytes written*/ 
 static int 
 write (int fd, const void *buffer, unsigned length)
 // length is the size in bytes.
@@ -287,11 +291,7 @@ write (int fd, const void *buffer, unsigned length)
     memcpy (buff, buffer, length);
   }
   
-  // This doesn't break up the larger buffers into shorter buffers correctly, as
-  // the first recursive call will cause the length value to be returned, and so 
-  // we won't iterate through the rest of the buffer.
-  
-  // first checks if fd is set to write to the console
+  // checks if fd is set to write to the console
   if (fd == STDOUT_FILENO) {
     int written_bytes_acc = 0;
     // Write to the console all of buffer in one call to putbuf(), at least
@@ -308,11 +308,13 @@ write (int fd, const void *buffer, unsigned length)
 
   lock_acquire(&filesystem_lock);  
   struct file *file_ptr = get_corresponding_file(fd);
+
   if (!file_ptr) {
     lock_release(&filesystem_lock);
     free (buff);
     return -1;
   }
+
   int return_value = file_write(file_ptr, buff, length); 
   lock_release(&filesystem_lock);
   free (buff);
@@ -375,6 +377,7 @@ syscall_handler (struct intr_frame *f)
   void *arg1 = (void *) get_int ((uint8_t *) f->esp + 4);
   void *arg2 = (void *) get_int ((uint8_t *) f->esp + 8);
   void *arg3 = (void *) get_int ((uint8_t *) f->esp + 12);
+  // sorry about the switch-case, but a hashtable is slower and this is more readable 
   switch (intr) {
     case SYS_HALT:
       halt ();
@@ -416,6 +419,7 @@ syscall_handler (struct intr_frame *f)
       close ((int) arg2);
       break;
     default:
+      //will exit the running thread if an invalid system call is used
       exit(-1);
   }
 }
