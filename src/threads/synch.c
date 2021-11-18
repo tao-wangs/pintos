@@ -203,25 +203,6 @@ lock_init (struct lock *lock)
   sema_init (&lock->semaphore, 1);
 }
 
-/* It transfers the ownership of the donation from the threads in the waiters
-   list to the current thread. */
-static void
-lock_obtain (struct lock *lock)
-{
-  int old_level = intr_disable ();
-  lock->holder = thread_current ();
-  //printf ("%d entered lock obtain for lock %p\n", thread_current ()->tid, lock);
-  for (struct list_elem *e = list_begin (&lock->semaphore.waiters);
-       e != list_end (&lock->semaphore.waiters);
-       e = list_next (e))
-  {
-    struct thread *t = list_entry(e, struct thread, elem);
-    printf ("in lock obtain head %d is waiting on %p\n", t->tid, lock);
-    thread_donate (t, thread_current ());
-  }
-  intr_set_level (old_level);
-}
-
 /* Acquires LOCK, sleeping until it becomes available if
    necessary.  The lock must not already be held by the current
    thread.

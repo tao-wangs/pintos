@@ -5,7 +5,7 @@
 struct threadtable table;
 
 static unsigned 
-thread_hash (const struct hash_elem *e, void *aux)
+thread_hash (const struct hash_elem *e, void *aux UNUSED)
 {
   struct threadtable_elem* elem = hash_entry (e, struct threadtable_elem, elem);
   return hash_int(elem->tid);
@@ -14,7 +14,7 @@ thread_hash (const struct hash_elem *e, void *aux)
 static bool
 thread_less (const struct hash_elem *a,
              const struct hash_elem *b,
-             void *aux)
+             void *aux UNUSED)
 {
   return hash_entry (a, struct threadtable_elem, elem)->tid
        < hash_entry (b, struct threadtable_elem, elem)->tid;
@@ -40,7 +40,7 @@ threadtable_init (void)
 }
 
 static void
-threadtable_elem_destroy (struct hash_elem *e, void *aux)
+threadtable_elem_destroy (struct hash_elem *e, void *aux UNUSED)
 {
   free (hash_entry (e, struct threadtable_elem, elem));
 }

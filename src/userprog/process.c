@@ -26,34 +26,6 @@ extern struct lock filesystem_lock;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-/* Reads a byte at user virtual address UADDR.
-UADDR must be below PHYS_BASE.
-Returns the byte value if successful, -1 if a segfault
-occurred. */
-static int
-get_user (const uint8_t *uaddr)
-{
-  ASSERT (is_user_vaddr(uaddr)); //checks uaddr is below PHYS_BASE
-  int result;
-  asm ("movl $1f, %0; movzbl %1, %0; 1:"
-  : "=&a" (result) : "m" (*uaddr));
-  return result;
-}
-
-/* Writes BYTE to user address UDST.
-UDST must be below PHYS_BASE.
-Returns true if successful, false if a segfault occurred. */
-static bool
-put_user (uint8_t *udst, uint8_t byte)
-{ 
-  ASSERT (is_user_vaddr(udst)); //checks udst is below PHYS_BASE
-  int error_code;
-  asm ("movl $1f, %0; movb %b2, %1; 1:"
-  : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-  return error_code != -1;
-}
-
-
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -63,7 +35,7 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-  if (is_user_vaddr(file_name) && get_user (file_name) == -1)
+  if (is_user_vaddr(file_name) &&  get_user ((const uint8_t *)file_name) == -1)
     return TID_ERROR;
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -662,7 +634,7 @@ setup_stack (void **esp, const char *file_name)
   }
 
   // pointer to first argument
-  int32_t first_ptr = *esp;
+  int32_t first_ptr = (int32_t) *esp;
   *esp -= sizeof(int32_t);
   memcpy(*esp, &first_ptr, sizeof(int32_t));
 
@@ -680,8 +652,8 @@ setup_stack (void **esp, const char *file_name)
   free(temp);
   free(tokens);
   free(addresses);
-
-  if ((PHYS_BASE - (int) *esp) > 4096) {
+  
+  if ((int) (PHYS_BASE - (int) *esp) > 4096) {
     return false;
   }  
 
