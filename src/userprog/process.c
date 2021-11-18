@@ -44,9 +44,6 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  // Temporary copy of file_name to use in strtok_r
-  // +1 because we have to take into consideration the \0 character I think?
-  // do correct me if im wrong
   char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
   
   strlcpy(temp, file_name, strlen(file_name) + 1);
@@ -61,7 +58,6 @@ process_execute (const char *file_name)
   lock_release (&filesystem_lock);
 
   if (file == NULL){
-    //printf("invalid exe detected\n");
     return -1;
   }
 
@@ -161,8 +157,6 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
   
-  /* Removes reference from threadtable for each child.
-     Probably should be moved. */
   struct list_elem *e = list_begin (&cur->children);
   while (e != list_end (&cur->children)) {
     struct list_elem *next = list_next (e);
@@ -307,9 +301,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
 
-  // Temporary copy of file_name to use in strtok_r
-  // +1 because we have to take into consideration the \0 character I think?
-  // do correct me if im wrong
   char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
 
   strlcpy(temp, file_name, strlen(file_name) + 1);
@@ -573,13 +564,23 @@ setup_stack (void **esp, const char *file_name)
       argc++;
     }
   }
+
+  // This checks for whitespace at the end of the command line 
   if (file_name[strlen(file_name) - 1] == ' ')
     argc--;
 
   // Next we break up file_name into individual arguments
   char **tokens = (char **) malloc(sizeof(char *) * argc);
 
+  if (!tokens) {
+    return false;
+  }
+
   int32_t *addresses = (int32_t *) calloc(argc, sizeof(int32_t));
+
+  if (!addresses) {
+    return false;
+  }
 
   char *save_ptr;
   char *token = " ";
@@ -589,7 +590,12 @@ setup_stack (void **esp, const char *file_name)
   // do correct me if im wrong
   char *temp = (char *) malloc(sizeof(char) * (strlen(file_name) + 1));
 
+  if (!temp) {
+    return false;
+  }
+
   strlcpy(temp, file_name, strlen(file_name) + 1);
+  
   // Tokenise the copy and add to array of tokens
   while (token != NULL && i < argc) {
     if (i == 0) {
@@ -646,14 +652,13 @@ setup_stack (void **esp, const char *file_name)
   *esp -= sizeof(int32_t);
   memcpy(*esp, zero_ptr, sizeof(int32_t));
 
-  /* Used for debugging purposes later */
-  //hex_dump((uint32_t) esp, *esp, 32, true);
-
+  // free resources
   free(temp);
   free(tokens);
   free(addresses);
   
-  if ((int) (PHYS_BASE - (int) *esp) > 4096) {
+  // check for stack overflow
+  if ((int) (PHYS_BASE - (int) *esp) > 4096 - sizeof(struct thread)) {
     return false;
   }  
 

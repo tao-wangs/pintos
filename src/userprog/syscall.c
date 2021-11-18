@@ -18,6 +18,7 @@ typedef int pid_t;
 
 static int fd_incr = 2;
 
+
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
@@ -83,6 +84,7 @@ get_int (const uint8_t *uaddr)
   }
   return result;
 }
+
 
 static void 
 halt (void)
@@ -200,7 +202,7 @@ get_corresponding_file (int fd) {
       return current_fd_map->fp;
     }
   }
-  return NULL; //this shouldnt really work, maybe fix
+  return NULL; 
 }
 
 static int 
@@ -419,7 +421,6 @@ syscall_handler (struct intr_frame *f)
     default:
       //will exit the running thread if an invalid system call is used
       exit(-1);
-      //ASSERT(1==0);
   }
 }
 
