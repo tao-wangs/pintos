@@ -145,19 +145,33 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+  
   f->eip = (void *) f->eax; 
   f->eax = 0xffffffff;
   if (user)
     exit (-1);
 
-  /* To implement virtual memory, delete the rest of the function
-     body, and replace it with code that brings in the page to
-     which fault_addr refers. */
-  /*printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
-  kill (f);*/
+ /*
+   1. Locate the page that faulted in the supplemental page table. If the memory reference is
+   valid, use the supplemental page table entry to locate the data that goes in the page, which
+   might be in the file system, or in a swap slot, or it might simply be an all-zero page. When
+   you implement sharing, the page’s data might even already be in a page frame, but not in
+   the page table.
+   If the supplemental page table indicates that the user process should not expect any data
+   at the address it was trying to access, or if the page lies within kernel virtual memory, or if
+   the access is an attempt to write to a read-only page, then the access is invalid. Any invalid
+   access terminates the process and thereby frees all of its resources.
+   
+   2. Obtain a frame to store the page. See Section 5.1.5 [Managing the Frame Table], page 44,
+   for details.
+   When you implement sharing, the data you need may already be in a frame, in which case
+   you must be able to locate that frame.
+   
+   3. Fetch the data into the frame, by reading it from the file system or swap, zeroing it, etc.
+   When you implement sharing, the page you need may already be in a frame, in which case
+   no action is necessary in this step.
+   
+   4. Point the page table entry for the faulting virtual address to the frame. You can use the
+   functions in ‘userprog/pagedir.c’. */
 }
 
