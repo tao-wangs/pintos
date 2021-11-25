@@ -1,10 +1,8 @@
 #include "threads/threadtable.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
-
-/* Thread hash table */
-struct threadtable table;
-
+#include <stdio.h>
+ 
 static unsigned 
 thread_hash (const struct hash_elem *e, void *aux UNUSED)
 {
@@ -23,24 +21,29 @@ thread_less (const struct hash_elem *a,
 
 /* Acquire thread table lock. */
 void 
-threadtable_acquire (void)
+threadtable_acquire (struct threadtable *table)
 {
-  lock_acquire (&table.lock);
+  lock_acquire (&table->lock);
 }
 
 /* Release thread table lock. */
 void
-threadtable_release (void)
+threadtable_release (struct threadtable *table)
 {
-  lock_release (&table.lock);
+  lock_release (&table->lock);
 }
 
 /* Initialise thread table. */
-void
+struct threadtable *
 threadtable_init (void)
 {
-  hash_init (&table.table, thread_hash, thread_less, NULL); 
-  lock_init (&table.lock);
+  struct threadtable *table = malloc (sizeof (struct threadtable));
+  if (!table)
+    return NULL;
+  hash_init (&table->table, thread_hash, thread_less, NULL); 
+  lock_init (&table->lock);
+  table->refs = 1;
+  return table;
 }
 
 /* Destroy thread table elem, freeing its resources. */
@@ -52,9 +55,11 @@ threadtable_elem_destroy (struct hash_elem *e, void *aux UNUSED)
 
 /* Destroy thread table, freeing its resources. */
 void
-threadtable_destroy (void)
+threadtable_destroy (struct threadtable *table)
 {
-  hash_destroy (&table.table, threadtable_elem_destroy);
+  hash_destroy (&table->table, threadtable_elem_destroy);
+  lock_release (&table->lock);
+  free (table);
 }
 
 /*
@@ -62,11 +67,11 @@ Gets the threadtable_elem * associated with the given tid from the hashtable.
 Returns NULL if missing.
 */
 struct threadtable_elem *
-find (int tid)
+find (struct threadtable *table, int tid)
 {
   struct threadtable_elem temp;
   temp.tid = tid;
-  struct hash_elem *e = hash_find (&table.table, &temp.elem);
+  struct hash_elem *e = hash_find (&table->table, &temp.elem);
   if (!e)
     return NULL;
   return hash_entry(e, struct threadtable_elem, elem);
@@ -76,11 +81,11 @@ find (int tid)
 Determines if the thread child_tid is a child of the thread parent_tid.
 */
 bool
-isChild (int parent_tid, int child_tid)
+isChild (struct threadtable *table, int parent_tid, int child_tid)
 {
-  lock_acquire (&table.lock);
-  struct threadtable_elem *e = find (child_tid);
-  lock_release (&table.lock);
+  lock_acquire (&table->lock);
+  struct threadtable_elem *e = find (table, child_tid);
+  lock_release (&table->lock);
   return e != NULL && e->parent_tid == parent_tid;
 }
 
@@ -89,18 +94,18 @@ Adds a new thread to the threadtable.
 Initialises its members to default values.
 */
 struct threadtable_elem*
-addThread (int parent_tid, int child_tid)
+addThread (struct threadtable *table, int parent_tid, int child_tid)
 {
-  lock_acquire (&table.lock);
-  if (find (child_tid))
+  lock_acquire (&table->lock);
+  if (find (table, child_tid))
   {
-    lock_release (&table.lock);
+    lock_release (&table->lock);
     return NULL; 
   }
   struct threadtable_elem *elem = malloc (sizeof(struct threadtable_elem));
   if (!elem)
   {
-    lock_release (&table.lock);
+    lock_release (&table->lock);
     return NULL;
   }
   sema_init (&elem->sema, 0);
@@ -110,8 +115,9 @@ addThread (int parent_tid, int child_tid)
   elem->refs = 2;
   elem->waited = false;
   elem->started = false;
-  hash_insert (&table.table, &elem->elem);
-  lock_release (&table.lock); 
+  hash_insert (&table->table, &elem->elem);
+  table->refs++;
+  lock_release (&table->lock); 
   return elem;
 }
 
@@ -120,14 +126,26 @@ Reduces refs by 1.
 If it becomes zero, the elem is destroyed.
 */
 static void
-decrRefs (struct threadtable_elem *elem)
+decrRefs (struct threadtable *table, struct threadtable_elem *elem)
 {
   --elem->refs;
   if (elem->refs == 0)
   {
-    hash_delete (&table.table, &elem->elem);
+    hash_delete (&table->table, &elem->elem);
     free (elem);
   }
+}
+
+static bool
+decrTableRefs (struct threadtable *table)
+{
+  --table->refs;
+  if (table->refs == 0)
+  {
+    threadtable_destroy (table);
+    return false;
+  }
+  return true;
 }
 
 /*
@@ -135,17 +153,17 @@ Called for each child when the parent exits.
 Decrements refs for the elem associated with the child.
 */
 bool
-parentExit (int child_tid)
+parentExit (struct threadtable *table, int child_tid)
 {
-  lock_acquire (&table.lock);
-  struct threadtable_elem *e = find (child_tid);
+  lock_acquire (&table->lock);
+  struct threadtable_elem *e = find (table, child_tid);
   if (!e)
   {
-    lock_release (&table.lock);
+    lock_release (&table->lock);
     return false;
   }
-  decrRefs (e); 
-  lock_release (&table.lock); 
+  decrRefs (table, e); 
+  lock_release (&table->lock); 
   return true;
 }
 
@@ -155,18 +173,19 @@ Sets the exit status and ups the semaphore.
 Wait should not block after this has been called.
 */
 bool
-childExit (int tid, int status)
+childExit (struct threadtable *table, int tid, int status)
 {
-  lock_acquire (&table.lock);
-  struct threadtable_elem *e = find (tid);
+  lock_acquire (&table->lock);
+  struct threadtable_elem *e = find (table, tid);
   if (!e)
   {
-    lock_release (&table.lock);
+    lock_release (&table->lock);
     return false;
   }
   e->status = status;
   sema_up (&e->sema);
-  decrRefs (e); 
-  lock_release (&table.lock); 
+  decrRefs (table, e); 
+  if (decrTableRefs (table))
+    lock_release (&table->lock); 
   return true;
 }
