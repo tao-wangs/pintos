@@ -37,6 +37,10 @@ static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
 
+static void *first_arg (struct intr_frame *f);
+static void *second_arg (struct intr_frame *f);
+static void *third_arg (struct intr_frame *f);
+
 /* Reads a byte at user virtual address UADDR.
 UADDR must be below PHYS_BASE.
 Returns the byte value if successful, -1 if a segfault
@@ -424,9 +428,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
-  void *arg1 = (void *) get_int ((uint8_t *) f->esp + 4);
-  void *arg2 = (void *) get_int ((uint8_t *) f->esp + 8);
-  void *arg3 = (void *) get_int ((uint8_t *) f->esp + 12);
+  
   /* Sorry about the switch-case, but a hashtable is slower 
      and this is more readable. */ 
   switch (intr) {
@@ -434,45 +436,60 @@ syscall_handler (struct intr_frame *f)
       halt ();
       break;
     case SYS_EXIT:
-      exit ((int) arg1);
+      exit ((int) first_arg(f));
       break;
     case SYS_EXEC:
-      f->eax = exec ((const char *) arg1);
+      f->eax = exec ((const char *) first_arg(f));
       break;
     case SYS_WAIT:
-      f->eax = wait ((pid_t) arg1);
+      f->eax = wait ((pid_t) first_arg(f));
       break;
     case SYS_CREATE:
-      f->eax = create ((const char *) arg1, (unsigned) arg2);
+      f->eax = create ((const char *) first_arg(f), (unsigned) second_arg(f));
       break;
     case SYS_REMOVE:
-      f->eax = remove ((const char *) arg1);
+      f->eax = remove ((const char *) first_arg(f));
       break;
     case SYS_OPEN:
-      f->eax = open ((const char *) arg1);
+      f->eax = open ((const char *) first_arg(f));
       break;
     case SYS_FILESIZE:
-      f->eax = filesize ((int) arg1);
+      f->eax = filesize ((int) first_arg(f));
       break;
     case SYS_READ:
-      f->eax = read ((int) arg1, arg2, (unsigned int) arg3); 
+      f->eax = read ((int) first_arg(f), second_arg(f), (unsigned int) third_arg(f)); 
       break;
     case SYS_WRITE:
-      f->eax = write ((int) arg1, arg2, (unsigned int) arg3);
+      f->eax = write ((int) first_arg(f), second_arg(f), (unsigned int) third_arg(f));
       break;
     case SYS_SEEK:
-      seek ((int) arg1, (unsigned int) arg2);
+      seek ((int) first_arg(f), (unsigned int) second_arg(f));
       break;
     case SYS_TELL:
-      f->eax = tell ((int) arg1);
+      f->eax = tell ((int) first_arg(f));
       break;
     case SYS_CLOSE:
-      close ((int) arg2);
+      close ((int) second_arg(f));
       break;
     default:
       /* Will terminate the current user process if an 
         invalid system call is used */
       exit (-1);
   }
+}
+
+/* Returns first system call argument from the stack */
+static void *first_arg (struct intr_frame *f) {
+  return get_int ((uint8_t *) f->esp + 4);
+}
+
+/* Returns second system call argument from the stack */
+static void *second_arg (struct intr_frame *f) {
+  return get_int ((uint8_t *) f->esp + 8);
+}
+
+/* Returns third system call argument from the stack */
+static void *third_arg (struct intr_frame *f) {
+  return get_int ((uint8_t *) f->esp + 12);
 }
 
