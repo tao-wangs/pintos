@@ -114,6 +114,8 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     
     struct list children;               /* Child processes */
+    struct threadtable *table;
+    struct threadtable *parent_table;
 
     struct list file_list;              /* List of open files */
     struct file *file;                  /* File kept open */

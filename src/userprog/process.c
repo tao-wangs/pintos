@@ -77,9 +77,9 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
 
-  threadtable_acquire ();
-  struct threadtable_elem *e = find (tid);
-  threadtable_release (); 
+  threadtable_acquire (thread_current ()->table);
+  struct threadtable_elem *e = find (thread_current ()->table, tid);
+  threadtable_release (thread_current ()->table); 
   
   if (!e)
     return -1;
@@ -107,17 +107,17 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
 
-  threadtable_acquire ();
-  struct threadtable_elem *e = find (thread_current ()->tid);
-  threadtable_release (); 
+  threadtable_acquire (thread_current ()->parent_table);
+  struct threadtable_elem *e = find (thread_current ()->parent_table, thread_current ()->tid);
+  threadtable_release (thread_current ()->parent_table); 
   
-  if (!e)
-    success = false;
-  e->started = success;
-  sema_up (&e->start_sema);
+  if (e) {
+    e->started = success;
+    sema_up (&e->start_sema);
+  }
   
   if (!success) 
-    thread_exit ();
+    exit (-1);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -145,9 +145,9 @@ process_wait (tid_t child_tid)
   {
     return -1;
   }
-  threadtable_acquire (); 
-  struct threadtable_elem *elem = find (child_tid);
-  threadtable_release ();
+  threadtable_acquire (thread_current ()->table); 
+  struct threadtable_elem *elem = find (thread_current ()->table, child_tid);
+  threadtable_release (thread_current ()->table);
   if (!elem || elem->waited)
   {
     return -1;
@@ -165,10 +165,11 @@ process_exit (void)
   uint32_t *pd;
   
   struct list_elem *e = list_begin (&cur->children);
-  while (e != list_end (&cur->children)) {
+  struct list_elem *end = list_end (&cur->children);
+  while (e != end) {
     struct list_elem *next = list_next (e);
     struct threadtable_elem *t = list_entry (e, struct threadtable_elem, lst_elem);
-    parentExit (t->tid);
+    parentExit (cur->table, t->tid);
     e = next;
   }
   lock_acquire (&filesystem_lock);

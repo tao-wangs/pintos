@@ -142,7 +142,7 @@ exit (int status)
   struct thread *cur = thread_current (); 
 
   printf ("%s: exit(%d)\n", cur->name, status);  
-  childExit (cur->tid, status);
+  childExit (cur->parent_table, cur->tid, status);
 
   thread_exit ();
 }

@@ -21,24 +21,25 @@ struct threadtable_elem {
 struct threadtable {
   struct hash table;        /* Stores elems in a hashtable for fast lookup */
   struct lock lock;         /* Synchronises access to threadtable */
+  int refs;
 };
 
-void threadtable_acquire (void);
+void threadtable_acquire (struct threadtable *);
 
-void threadtable_release (void);
+void threadtable_release (struct threadtable *);
 
-void threadtable_init (void);
+struct threadtable *threadtable_init (void);
 
-void threadtable_destroy (void);
+void threadtable_destroy (struct threadtable *);
 
-struct threadtable_elem * find (int tid);
+struct threadtable_elem * find (struct threadtable *, int tid);
 
-bool isChild (int parent_tid, int child_tid);
+bool isChild (struct threadtable *, int parent_tid, int child_tid);
 
-struct threadtable_elem * addThread (int parent_tid, int child_tid);
+struct threadtable_elem * addThread (struct threadtable *, int parent_tid, int child_tid);
 
-bool parentExit (int child_tid);
+bool parentExit (struct threadtable *, int child_tid);
 
-bool childExit (int tid, int status);
+bool childExit (struct threadtable *, int tid, int status);
 
 #endif

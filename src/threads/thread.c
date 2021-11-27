@@ -104,6 +104,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT, NICE_DEFAULT, 0);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  //threadtable_init (initial_thread->table);
+  //initial_thread->parent_table = initial_thread->table;
   list_init (&initial_thread->priority_list);
   lock_init (&initial_thread->priority_list_lock);
   list_init (&initial_thread->file_list);
@@ -116,7 +118,9 @@ thread_init (void)
 void
 thread_start (void) 
 {
-  threadtable_init ();
+  initial_thread->table = threadtable_init ();
+  initial_thread->parent_table = initial_thread->table;
+
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
@@ -231,7 +235,10 @@ thread_create (const char *name, int priority,
   lock_init (&t->priority_list_lock);
 
   list_init (&t->file_list);
-  struct threadtable_elem *e = addThread (thread_current ()->tid, tid);
+  if (!(t->table = threadtable_init())) 
+    return TID_ERROR;
+  t->parent_table = thread_current ()->table;
+  struct threadtable_elem *e = addThread (thread_current ()->table, thread_current ()->tid, tid);
   if (!e)
     return TID_ERROR;
   list_push_back (&thread_current ()->children, &e->lst_elem); 
