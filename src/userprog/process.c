@@ -26,6 +26,10 @@ extern struct lock filesystem_lock;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+static void push_args (void **esp, char **tokens, int argc, int *addresses); 
+static void align_esp (void **esp); 
+static void push_addresses (void **esp, int argc, int *addresses); 
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -611,56 +615,16 @@ setup_stack (void **esp, const char *file_name)
 	  } else {
 	    token = strtok_r (NULL, " ", &save_ptr);	
 	  } 
-    // do #define SIZE_LIMIT 128
-    if ((strlen (token) + 1) * sizeof(char) > 512)
-    {
-      //printf("Size of command line argument is too big\n");
-	  return false;
-    }
     tokens[i] = token;
     i++;	
   }
 
-  // FAQ in spec says to decrement the stack pointer before pushing
-  for (int i = argc - 1; i >= 0; i--) {
-    *esp -= strlen (tokens[i]) + 1;
-    memcpy (*esp, tokens[i], strlen (tokens[i]) + 1);
-    addresses[i] = (int32_t) *esp;
-  }
+  push_args (esp, tokens, argc, addresses);
 
-  uint32_t zero = 0;
-  uint32_t *zero_ptr = &zero;
+  align_esp (esp);
+  
+  push_addresses (esp, argc, addresses);
 
-  // rounding stack pointer to a multiple of 4
-  while ((int) *esp % 4 != 0) {
-    *esp -= sizeof(char);
-    memcpy (*esp, zero_ptr, sizeof(char));
-  }
-
-  // null pointer sentinel
-  *esp -= sizeof(int32_t);
-  memcpy (*esp, zero_ptr, sizeof(uint32_t));
-
-  // addresses of arguments 
-  for (int i = argc - 1; i >= 0; i--) {
-    *esp -= sizeof(int32_t);
-    memcpy (*esp, &addresses[i], sizeof(int32_t));
-  }
-
-  // pointer to first argument
-  int32_t first_ptr = (int32_t) *esp;
-  *esp -= sizeof(int32_t);
-  memcpy (*esp, &first_ptr, sizeof(int32_t));
-
-  // argc
-  *esp -= sizeof(int32_t);
-  memcpy (*esp, &argc, sizeof(int32_t));
-
-  // fake return address 0
-  *esp -= sizeof(int32_t);
-  memcpy (*esp, zero_ptr, sizeof(int32_t));
-
-  // free resources
   free (temp);
   free (tokens);
   free (addresses);
@@ -691,4 +655,49 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+static void push_args (void **esp, char **tokens, 
+                                  int argc, int *addresses) 
+{
+  for (int i = argc - 1; i >= 0; i--) {
+    *esp -= strlen (tokens[i]) + 1;
+    memcpy (*esp, tokens[i], strlen (tokens[i]) + 1);
+    addresses[i] = (int32_t) *esp;
+  }
+}
+
+static void align_esp (void **esp) 
+{
+  uint32_t zero = 0;
+  uint32_t *zero_ptr = &zero;
+
+  while ((int) *esp % 4 != 0) {
+    *esp -= sizeof(char);
+    memcpy (*esp, zero_ptr, sizeof(char));
+  }
+
+  *esp -= sizeof(int32_t);
+  memcpy (*esp, zero_ptr, sizeof(uint32_t));
+}
+
+static void push_addresses (void **esp, int argc, int *addresses) 
+{
+  for (int i = argc - 1; i >= 0; i--) {
+    *esp -= sizeof(int32_t);
+    memcpy (*esp, &addresses[i], sizeof(int32_t));
+  }
+
+  int32_t first_ptr = (int32_t) *esp;
+  *esp -= sizeof(int32_t);
+  memcpy (*esp, &first_ptr, sizeof(int32_t));
+
+  *esp -= sizeof(int32_t);
+  memcpy (*esp, &argc, sizeof(int32_t));
+
+  uint32_t zero = 0;
+  uint32_t *zero_ptr = &zero;
+
+  *esp -= sizeof(int32_t);
+  memcpy (*esp, zero_ptr, sizeof(int32_t));
 }
