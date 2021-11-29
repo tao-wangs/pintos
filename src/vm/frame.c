@@ -13,7 +13,7 @@ frametable_init (void)
 {
   list_init (&table.frames);
   lock_init (&frame_lock);
-  for (int i = 0; i < init_ram_pages; ++i)
+  for (int i = 0; i < (int) init_ram_pages; ++i)
   {
     struct frame *f = malloc (sizeof (struct frame));
     if (!f)
