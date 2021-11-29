@@ -13,6 +13,7 @@
 #include "devices/block.h"
 #include "filesys/filesys.h"
 #endif
+#include "vm/frame.h"
 
 /* Keyboard control register port. */
 #define CONTROL_REG 0x64
@@ -93,6 +94,7 @@ shutdown_power_off (void)
 #ifdef FILESYS
   filesys_done ();
 #endif
+  frametable_free ();
 
   print_stats ();
 

@@ -10,6 +10,7 @@
 #include "threads/loader.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "vm/frame.h"
 
 /* Page allocator.  Hands out memory in page-size (or
    page-multiple) chunks.  See malloc.h for an allocator that
@@ -88,6 +89,11 @@ palloc_get_multiple (enum palloc_flags flags, size_t page_cnt)
 
   if (pages != NULL) 
     {
+      if (flags & PAL_USER) {
+        for (int i = 0; i < page_cnt; ++i) {
+          alloc_frame (pages + PGSIZE * i);
+        }
+      }
       if (flags & PAL_ZERO)
         memset (pages, 0, PGSIZE * page_cnt);
     }
@@ -133,6 +139,11 @@ palloc_free_multiple (void *pages, size_t page_cnt)
 
   page_idx = pg_no (pages) - pg_no (pool->base);
 
+  if (pool == &user_pool) {
+    for (int i = 0; i < page_cnt; ++i) {
+      free_frame (pages + i * PGSIZE);
+    }
+  }
 #ifndef NDEBUG
   memset (pages, 0xcc, PGSIZE * page_cnt);
 #endif
