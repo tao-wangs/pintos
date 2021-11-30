@@ -90,7 +90,7 @@ palloc_get_multiple (enum palloc_flags flags, size_t page_cnt)
   if (pages != NULL) 
     {
       if (flags & PAL_USER) {
-        for (int i = 0; i < page_cnt; ++i) {
+        for (int i = 0; i < (int) page_cnt; ++i) {
           alloc_frame (pages + PGSIZE * i);
         }
       }
@@ -140,7 +140,7 @@ palloc_free_multiple (void *pages, size_t page_cnt)
   page_idx = pg_no (pages) - pg_no (pool->base);
 
   if (pool == &user_pool) {
-    for (int i = 0; i < page_cnt; ++i) {
+    for (int i = 0; i < (int) page_cnt; ++i) {
       free_frame (pages + i * PGSIZE);
     }
   }

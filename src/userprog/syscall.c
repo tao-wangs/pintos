@@ -480,16 +480,16 @@ syscall_handler (struct intr_frame *f)
 
 /* Returns first system call argument from the stack */
 static void *first_arg (struct intr_frame *f) {
-  return get_int ((uint8_t *) f->esp + 4);
+  return (void *) get_int ((uint8_t *) f->esp + 4);
 }
 
 /* Returns second system call argument from the stack */
 static void *second_arg (struct intr_frame *f) {
-  return get_int ((uint8_t *) f->esp + 8);
+  return (void *) get_int ((uint8_t *) f->esp + 8);
 }
 
 /* Returns third system call argument from the stack */
 static void *third_arg (struct intr_frame *f) {
-  return get_int ((uint8_t *) f->esp + 12);
+  return (void *) get_int ((uint8_t *) f->esp + 12);
 }
 
