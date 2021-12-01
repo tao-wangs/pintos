@@ -11,6 +11,7 @@
 #include "vm/page.h"
 #include "vm/frame.h"
 #include "filesys/off_t.h"
+#include "threads/malloc.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -155,7 +156,7 @@ page_fault (struct intr_frame *f)
   f->eip = (void *) f->eax; 
   f->eax = 0xffffffff;  
 
-  struct page *page = locate_page (f->esp);
+  struct page *page = locate_page (fault_addr);
 
   if (page != NULL)
   {
@@ -173,7 +174,17 @@ page_fault (struct intr_frame *f)
         struct file_data *fdata = (struct file_data *) page->data;
         if (!load_segment (fdata->file, fdata->ofs, page->addr,
                       fdata->read_bytes, fdata->zero_bytes, fdata->writable))
+        {
+          printf ("Load segment failed!\n");
+          printf ("file: %p\n", fdata->file);
+          printf ("ofs: %d\n", fdata->ofs);
+          printf ("addr: %p\n", page->addr);
+          printf ("read_bytes: %d\n", fdata->read_bytes);
+          printf ("zero_bytes: %d\n", fdata->zero_bytes);
+          printf ("writable: %d\n", fdata->writable);
           exit (-1);
+        }
+        free (fdata);
         break;
       }
       case ZERO:
@@ -184,7 +195,10 @@ page_fault (struct intr_frame *f)
     page->status = FRAME;
   } else {
     if (user)
+    {
+      printf ("User page fault!\n");
       exit (-1);
+    }
   }
 
  /*

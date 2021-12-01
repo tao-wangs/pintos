@@ -3,6 +3,7 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include <stdio.h>
 
 struct hash page_table;
 
@@ -37,6 +38,7 @@ struct page *
 locate_page (void *addr)
 {
   void *page = pg_round_down (addr); 
+  printf ("finding page at addr %p\n", page);
   struct page temp; 
   temp.addr = page;
   lock_acquire (&page_lock);
@@ -53,6 +55,7 @@ void
 add_page (void *addr, void *data, enum page_status status)
 {
   void *pg_addr = pg_round_down (addr);
+  printf ("adding page at addr %p\n", pg_addr);
   struct page *page = malloc (sizeof (struct page));
   if (!page)
   {
