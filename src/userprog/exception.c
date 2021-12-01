@@ -1,12 +1,16 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "userprog/process.h"
 #include "vm/page.h"
 #include "vm/frame.h"
+#include "filesys/off_t.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -151,14 +155,11 @@ page_fault (struct intr_frame *f)
   f->eip = (void *) f->eax; 
   f->eax = 0xffffffff;  
 
-  if (user)
-    exit (-1);
-
-  struct page *page = locate_page(f->esp);
+  struct page *page = locate_page (f->esp);
 
   if (page != NULL)
   {
-    alloc_frame(page->addr);
+    alloc_frame (page->addr);
     switch (page->status)
     {
       case FRAME:
@@ -167,14 +168,23 @@ page_fault (struct intr_frame *f)
         //Swap in
         break;
       case FILE_SYS:
+      {
         //Load from file
-        break
+        struct file_data *fdata = (struct file_data *) page->data;
+        if (!load_segment (fdata->file, fdata->ofs, page->addr,
+                      fdata->read_bytes, fdata->zero_bytes, fdata->writable))
+          exit (-1);
+        break;
+      }
       case ZERO:
         //Zero page
-        break
+        memset (page->addr, 0, PGSIZE);
+        break;
     }
+    page->status = FRAME;
   } else {
-    exit(-1);
+    if (user)
+      exit (-1);
   }
 
  /*

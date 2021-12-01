@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <hash.h>
+#include "filesys/off_t.h"
 
 enum page_status
 {
@@ -10,6 +11,15 @@ enum page_status
    SWAP, 
    FILE_SYS,
    ZERO
+};
+
+struct file_data
+{
+  struct file *file;
+  off_t ofs;
+  uint32_t read_bytes;
+  uint32_t zero_bytes;
+  bool writable;
 };
 
 struct page
@@ -20,13 +30,14 @@ struct page
   void *data;
 };
 
-static unsigned
+/*static unsigned
 page_hash (const struct hash_elem *e, void *aux UNUSED);
 
 static bool
 page_less (const struct hash_elem *a,
            const struct hash_elem *b,
            void *aux UNUSED);
+*/
 
 void pagetable_init (void);
 

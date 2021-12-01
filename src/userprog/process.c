@@ -20,6 +20,7 @@
 #include "threads/malloc.h"
 #include "threads/threadtable.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
 
 extern struct lock filesystem_lock;
 
@@ -287,9 +288,6 @@ struct Elf32_Phdr
 
 static bool setup_stack (void **esp, const char *file_name);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
-static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
-                          uint32_t read_bytes, uint32_t zero_bytes,
-                          bool writable);
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
    Stores the executable's entry point into *EIP
@@ -401,11 +399,19 @@ load (const char *file_name, void (**eip) (void), void **esp)
                   read_bytes = 0;
                   zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
                 }
-              if (!load_segment (t->file, file_page, (void *) mem_page,
+              /*if (!load_segment (t->file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
               {
                 goto done;
-              }
+              }*/
+
+              struct file_data *fdata = malloc (sizeof (struct file_data));
+              fdata->file = t->file;
+              fdata->ofs = file_page;
+              fdata->read_bytes = read_bytes;
+              fdata->zero_bytes = zero_bytes;
+              fdata->writable = writable;
+              add_page ((void *) mem_page, (void *) fdata, FILESYS); 
             }
           else
           {
@@ -493,7 +499,7 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
 
    Return true if successful, false if a memory allocation error
    or disk read error occurs. */
-static bool
+bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
               uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
 {
