@@ -5,6 +5,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
+#include "vm/frame.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -147,9 +149,19 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
   
   f->eip = (void *) f->eax; 
-  f->eax = 0xffffffff;
+  f->eax = 0xffffffff;  
+
   if (user)
     exit (-1);
+
+  struct page *page = locate_page(f->esp);
+
+  if (page != NULL)
+  {
+     alloc_frame(page->addr);
+  } else {
+     exit(-1);
+  }
 
  /*
    1. Locate the page that faulted in the supplemental page table. If the memory reference is
