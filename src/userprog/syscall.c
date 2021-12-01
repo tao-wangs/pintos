@@ -11,15 +11,23 @@
 #include "filesys/file.h"
 #include "threads/threadtable.h"
 #include "threads/malloc.h"
+#include "vm/mmap.h"
 #include <string.h>
 
 typedef int pid_t; 
+typedef int mapid_t;
+
+/* List of file-memory mappings */
+struct list mmappings;
 
 /* File system lock */
 struct lock filesystem_lock;
 
 /* Default file descriptor number, incremented safely in open syscall. */ 
 static int fd_incr = 2;
+
+/* Default mapping id number, incremented safely in mmap and munmap syscalls */
+static int mid_incr = 0;
 
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
@@ -36,6 +44,9 @@ static int write (int fd, const void *buffer, unsigned length);
 static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
+
+static mapid_t mmap (int fd, void *addr);
+static void munmap (mapid_t);
 
 static void *first_arg (struct intr_frame *f);
 static void *second_arg (struct intr_frame *f);
@@ -415,11 +426,53 @@ close (int fd)
   lock_release (&filesystem_lock);
 }
 
+static mapid_t 
+mmap (int fd, void *addr)
+{ 
+  if (fd == STDIN_FILENO || fd == STDOUT_FILENO || (int) addr == 0) {
+    return -1; 
+  }
+
+  struct file *fp = get_corresponding_file (fd);
+
+  lock_acquire (&filesystem_lock);
+  
+  if (!file_length (fp)) {
+    lock_release (&filesystem_lock);
+    return -1;
+  }
+  
+  /* TODO: the mapping */
+
+  struct m_map *mapping = malloc (sizeof (struct m_map));
+
+  if (!mapping) {
+    exit (-1); //or return -1?
+  }
+
+  mapping->addr = addr;
+  mapping->fp = fp;
+  mapping->mid = ++mid_incr;
+
+  list_push_back (&mmappings, &mapping->elem);
+
+  lock_release (&filesystem_lock);
+
+  return mapping->mid;
+}
+
+static void 
+munmap (mapid_t mapid_t)
+{
+
+}
+
 /* Initialises system call handler and file system lock. */
 void
 syscall_init (void) 
 {
   lock_init (&filesystem_lock);
+  list_init (&mmappings);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -470,6 +523,12 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_CLOSE:
       close ((int) second_arg(f));
+      break;
+    case SYS_MMAP:
+      mmap ((int) first_arg(f), second_arg(f));
+      break;
+    case SYS_MUNMAP:
+      munmap ((mapid_t) first_arg(f));
       break;
     default:
       /* Will terminate the current user process if an 
