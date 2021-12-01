@@ -153,6 +153,9 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
   
+  printf ("eip %p\n", f->eip);
+  printf ("fault addr %p\n", fault_addr);
+
   f->eip = (void *) f->eax; 
   f->eax = 0xffffffff;  
 
