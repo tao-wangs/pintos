@@ -28,6 +28,7 @@ struct page
   void *addr;
   enum page_status status;
   void *data;
+  struct thread *t;
 };
 
 /*static unsigned

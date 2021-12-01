@@ -1,6 +1,7 @@
 #include "vm/frame.h"
 #include "threads/loader.h"
 #include "threads/malloc.h"
+#include "threads/palloc.h"
 #include "threads/synch.h"
 
 struct frametable table;
@@ -17,9 +18,7 @@ frametable_init (void)
   {
     struct frame *f = malloc (sizeof (struct frame));
     if (!f)
-    {
       PANIC ("Failed to malloc frame");
-    }
     list_push_back (&table.frames, &f->elem);
   }
 }
@@ -36,16 +35,17 @@ frametable_free (void)
   } 
 }
 
-void
+struct frame *
 alloc_frame (void *page)
 {
   bool allocated = false;
   lock_acquire (&frame_lock);
+  struct frame *f;
   for (struct list_elem *e = list_begin (&table.frames);
        e != list_end (&table.frames);
        e = list_next (e))
   {
-    struct frame *f = list_entry (e, struct frame, elem);
+    f = list_entry (e, struct frame, elem);
     if (!f->page)
     {
       f->page = page;
@@ -58,6 +58,7 @@ alloc_frame (void *page)
   {
     PANIC ("alloc_frame: no free frames!"); 
   }
+  return f;
 }
 
 void

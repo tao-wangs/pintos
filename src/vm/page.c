@@ -64,6 +64,7 @@ add_page (void *addr, void *data, enum page_status status)
   page->addr = pg_addr;
   page->data = data;
   page->status = status;
+  page->t = thread_current ();
   lock_acquire (&page_lock);
   hash_insert (&page_table, &page->elem);
   lock_release (&page_lock);

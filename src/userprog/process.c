@@ -411,7 +411,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
               fdata->read_bytes = read_bytes;
               fdata->zero_bytes = zero_bytes;
               fdata->writable = writable;
-              add_page ((void *) mem_page, (void *) fdata, FILESYS); 
+              add_page ((void *) mem_page, (void *) fdata, FILE_SYS); 
             }
           else
           {

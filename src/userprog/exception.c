@@ -8,10 +8,13 @@
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
 #include "userprog/process.h"
+#include "userprog/pagedir.h"
 #include "vm/page.h"
 #include "vm/frame.h"
 #include "filesys/off_t.h"
 #include "threads/malloc.h"
+#include "threads/palloc.h"
+
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -163,7 +166,8 @@ page_fault (struct intr_frame *f)
 
   if (page != NULL)
   {
-    alloc_frame (page->addr);
+    struct frame *frame = alloc_frame (page->addr);
+    printf ("page status: %d\n", page->status);
     switch (page->status)
     {
       case FRAME:
@@ -175,6 +179,7 @@ page_fault (struct intr_frame *f)
       {
         //Load from file
         struct file_data *fdata = (struct file_data *) page->data;
+        printf ("Loading segment\n");
         if (!load_segment (fdata->file, fdata->ofs, page->addr,
                       fdata->read_bytes, fdata->zero_bytes, fdata->writable))
         {
@@ -196,6 +201,8 @@ page_fault (struct intr_frame *f)
         break;
     }
     page->status = FRAME;
+    printf ("mapping pagedir %p to %p\n", page->addr, frame->kPage);
+    pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true);
   } else {
     if (user)
     {

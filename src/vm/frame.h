@@ -6,6 +6,7 @@
 struct frame {
   struct list_elem elem;
   void *page;
+  void *kPage;
   bool accessed;
 };
 
@@ -17,7 +18,7 @@ void frametable_init (void);
 
 void frametable_free (void);
 
-void alloc_frame (void *page);
+struct frame *alloc_frame (void *page);
 
 void free_frame (void *page);
 
