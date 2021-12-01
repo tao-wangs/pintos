@@ -14,6 +14,7 @@
 #include "filesys/off_t.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
+#include "filesys/file.h"
 
 
 /* Number of page faults processed. */
@@ -167,6 +168,7 @@ page_fault (struct intr_frame *f)
   if (page != NULL)
   {
     struct frame *frame = alloc_frame (page->addr);
+    pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true);
     printf ("page status: %d\n", page->status);
     switch (page->status)
     {
@@ -180,18 +182,9 @@ page_fault (struct intr_frame *f)
         //Load from file
         struct file_data *fdata = (struct file_data *) page->data;
         printf ("Loading segment\n");
-        if (!load_segment (fdata->file, fdata->ofs, page->addr,
-                      fdata->read_bytes, fdata->zero_bytes, fdata->writable))
-        {
-          printf ("Load segment failed!\n");
-          printf ("file: %p\n", fdata->file);
-          printf ("ofs: %d\n", fdata->ofs);
-          printf ("addr: %p\n", page->addr);
-          printf ("read_bytes: %d\n", fdata->read_bytes);
-          printf ("zero_bytes: %d\n", fdata->zero_bytes);
-          printf ("writable: %d\n", fdata->writable);
-          exit (-1);
-        }
+        if (file_read (fdata->file, frame->kPage, fdata->read_bytes) != fdata->read_bytes)
+          PANIC ("FAILED TO READ SEGMENT!");
+        memset (frame->kPage + fdata->read_bytes, 0, fdata->zero_bytes);
         free (fdata);
         break;
       }
@@ -201,8 +194,6 @@ page_fault (struct intr_frame *f)
         break;
     }
     page->status = FRAME;
-    printf ("mapping pagedir %p to %p\n", page->addr, frame->kPage);
-    pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true);
   } else {
     if (user)
     {

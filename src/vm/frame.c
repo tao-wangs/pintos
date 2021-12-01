@@ -3,6 +3,7 @@
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
+#include <stdio.h>
 
 struct frametable table;
 struct lock frame_lock;
@@ -14,11 +15,16 @@ frametable_init (void)
 {
   list_init (&table.frames);
   lock_init (&frame_lock);
-  for (int i = 0; i < (int) init_ram_pages; ++i)
+  printf ("init_ram_pages: %d\n", init_ram_pages);
+  for (int i = 0; i < 367; ++i)
   {
+    //printf ("Initialising frame %d\n", i);
     struct frame *f = malloc (sizeof (struct frame));
     if (!f)
       PANIC ("Failed to malloc frame");
+    f->kPage = palloc_get_page (PAL_USER);
+    if (!f->kPage)
+      PANIC ("FAILED to palloc frame");
     list_push_back (&table.frames, &f->elem);
   }
 }

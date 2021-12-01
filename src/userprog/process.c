@@ -21,6 +21,7 @@
 #include "threads/threadtable.h"
 #include "userprog/syscall.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 extern struct lock filesystem_lock;
 
@@ -399,19 +400,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
                   read_bytes = 0;
                   zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
                 }
-              /*if (!load_segment (t->file, file_page, (void *) mem_page,
+              if (!load_segment (t->file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
               {
                 goto done;
-              }*/
-
-              struct file_data *fdata = malloc (sizeof (struct file_data));
-              fdata->file = t->file;
-              fdata->ofs = file_page;
-              fdata->read_bytes = read_bytes;
-              fdata->zero_bytes = zero_bytes;
-              fdata->writable = writable;
-              add_page ((void *) mem_page, (void *) fdata, FILE_SYS); 
+              }
             }
           else
           {
@@ -516,33 +509,55 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
       
+      struct page *page = locate_page (upage);
+      if (!page)
+      {
+        struct file_data *fdata = malloc (sizeof (struct file_data));
+        if (!fdata)
+          return false;
+        fdata->file = file;
+        fdata->ofs = ofs;
+        fdata->read_bytes = page_read_bytes;
+        fdata->zero_bytes = page_zero_bytes;
+        fdata->writable = writable;
+        add_page ((void *) upage, (void *) fdata, FILE_SYS);
+      } else
+      {
+        struct file_data *fdata = (struct file_data *) page->data;
+        fdata->read_bytes += page_read_bytes;
+        fdata->zero_bytes = PGSIZE - page_read_bytes;
+      }
       /* Check if virtual page already allocated */
+      /*
       struct thread *t = thread_current ();
       uint8_t *kpage = pagedir_get_page (t->pagedir, upage);
       
-      if (kpage == NULL){
-        
+       if (kpage == NULL){
+       */ 
         /* Get a new page of memory. */
+        /*
         kpage = palloc_get_page (PAL_USER);
         if (kpage == NULL){
           return false;
         }
-        
+        */ 
         /* Add the page to the process's address space. */
+        /*
         if (!install_page (upage, kpage, writable)) 
         {
           palloc_free_page (kpage);
           return false; 
         }        
       }
-
+      */
       /* Load data into the page. */
+      /*
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
           return false; 
         }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+      memset (kpage + page_read_bytes, 0, page_zero_bytes);*/
 
       /* Advance. */
       read_bytes -= page_read_bytes;
@@ -557,17 +572,20 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp, const char *file_name) 
 {
-  uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
+  struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE);
+  //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  if (frame != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame->kPage, true);
       if (success)
         *esp = PHYS_BASE;
       else
-        palloc_free_page (kpage);
+      {
+        free_frame (frame);
+        return false;
+      }
     }
 
   uint32_t argc = 1;
