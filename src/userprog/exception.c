@@ -158,9 +158,23 @@ page_fault (struct intr_frame *f)
 
   if (page != NULL)
   {
-     alloc_frame(page->addr);
+    alloc_frame(page->addr);
+    switch (page->status)
+    {
+      case FRAME:
+        NOT_REACHED ();
+      case SWAP:
+        //Swap in
+        break;
+      case FILE_SYS:
+        //Load from file
+        break
+      case ZERO:
+        //Zero page
+        break
+    }
   } else {
-     exit(-1);
+    exit(-1);
   }
 
  /*

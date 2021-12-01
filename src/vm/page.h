@@ -8,7 +8,8 @@ enum page_status
 {
    FRAME, 
    SWAP, 
-   FILE_SYS
+   FILE_SYS,
+   ZERO
 };
 
 struct page
