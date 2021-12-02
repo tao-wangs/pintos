@@ -21,6 +21,9 @@ struct file_data
   uint32_t read_bytes;
   uint32_t zero_bytes;
   bool writable;
+  
+  //-tao
+  uint32_t size;
 };
 
 struct page
