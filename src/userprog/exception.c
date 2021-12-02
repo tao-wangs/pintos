@@ -157,7 +157,7 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  struct page *page = locate_page (fault_addr);
+  struct page *page = locate_page (fault_addr, thread_current()->page_table);
 
   if (page != NULL)
   {
@@ -196,7 +196,7 @@ page_fault (struct intr_frame *f)
   } else {
     if (user)
     {
-      printf ("User page fault!\n");
+      //printf ("User page fault!\n");
       exit (-1);
     } else
     {

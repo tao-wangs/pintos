@@ -509,7 +509,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
       
-      struct page *page = locate_page (upage);
+      struct page *page = locate_page (upage, thread_current()->page_table);
       if (!page)
       {
         struct file_data *fdata = malloc (sizeof (struct file_data));
@@ -520,7 +520,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         fdata->read_bytes = page_read_bytes;
         fdata->zero_bytes = page_zero_bytes;
         fdata->writable = writable;
-        add_page ((void *) upage, (void *) fdata, FILE_SYS);
+        add_page ((void *) upage, (void *) fdata, FILE_SYS, thread_current()->page_table);
       } else
       {
         struct file_data *fdata = (struct file_data *) page->data;
@@ -580,7 +580,7 @@ setup_stack (void **esp, const char *file_name)
 {
   bool success = false;
 
-  add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME);
+  add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table);
   struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE);
   //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (frame != NULL) 

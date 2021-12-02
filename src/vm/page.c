@@ -6,10 +6,6 @@
 #include "threads/thread.h"
 #include <stdio.h>
 
-struct hash page_table;
-
-struct lock page_lock;
-
 static void page_remove (struct hash_elem *e, void *aux UNUSED);
 
 static unsigned
@@ -28,22 +24,24 @@ page_less (const struct hash_elem *a,
        < hash_entry (b, struct page, elem)->addr;
 }
 
-void 
+struct page_table* 
 pagetable_init (void)
 {
-  hash_init (&page_table, page_hash, page_less, NULL);
-  lock_init (&page_lock);
+  struct page_table *page_table = malloc(sizeof(struct page_table));
+  hash_init (&page_table->table, page_hash, page_less, NULL);
+  lock_init (&page_table->lock);
+  return page_table;
 }
 
 struct page *
-locate_page (void *addr)
+locate_page (void *addr, struct page_table *page_table)
 {
   void *page = pg_round_down (addr); 
   struct page temp; 
   temp.addr = page;
-  lock_acquire (&page_lock);
-  struct hash_elem *e = hash_find (&page_table, &temp.elem);
-  lock_release (&page_lock);
+  lock_acquire (&page_table->lock);
+  struct hash_elem *e = hash_find (&page_table->table, &temp.elem);
+  lock_release (&page_table->lock);
   if (!e)
   {
     return NULL;  
@@ -53,7 +51,7 @@ locate_page (void *addr)
 }
 
 void
-add_page (void *addr, void *data, enum page_status status)
+add_page (void *addr, void *data, enum page_status status, struct page_table *page_table)
 {
   void *pg_addr = pg_round_down (addr);
   struct page *page = malloc (sizeof (struct page));
@@ -65,20 +63,20 @@ add_page (void *addr, void *data, enum page_status status)
   page->data = data;
   page->status = status;
   page->t = thread_current ();
-  lock_acquire (&page_lock);
-  hash_insert (&page_table, &page->elem);
-  lock_release (&page_lock);
+  lock_acquire (&page_table->lock);
+  hash_insert (&page_table->table, &page->elem);
+  lock_release (&page_table->lock);
 }
 
 void
-remove_page (void *addr)
+remove_page (void *addr, struct page_table *page_table)
 {
-  struct page *page = locate_page (addr); 
+  struct page *page = locate_page (addr, page_table); 
   if (!page)
     return;
-  lock_acquire (&page_lock);
-  hash_delete (&page_table, &page->elem);
-  lock_release (&page_lock);
+  lock_acquire (&page_table->lock);
+  hash_delete (&page_table->table, &page->elem);
+  lock_release (&page_table->lock);
   free (page);
 }
 static void
@@ -87,7 +85,7 @@ page_remove (struct hash_elem *e, void *aux UNUSED)
   free (hash_entry (e, struct page, elem));
 }
 
-void pagetable_destroy (void)
+void pagetable_destroy (struct page_table *page_table)
 {
-  hash_destroy (&page_table, page_remove);
+  hash_destroy (&page_table->table, page_remove);
 }

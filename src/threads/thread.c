@@ -120,6 +120,8 @@ thread_start (void)
 {
   initial_thread->table = threadtable_init ();
   initial_thread->parent_table = initial_thread->table;
+  
+  initial_thread->page_table = pagetable_init();
 
   /* Create the idle thread. */
   struct semaphore idle_started;
@@ -237,6 +239,9 @@ thread_create (const char *name, int priority,
   list_init (&t->file_list);
   if (!(t->table = threadtable_init())) 
     return TID_ERROR;
+  if (!(t->page_table = pagetable_init()))
+    return TID_ERROR;
+
   t->parent_table = thread_current ()->table;
   struct threadtable_elem *e = addThread (thread_current ()->table, thread_current ()->tid, tid);
   if (!e)
