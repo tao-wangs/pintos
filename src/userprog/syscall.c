@@ -20,6 +20,7 @@ typedef int mapid_t;
 /* File system lock */
 struct lock filesystem_lock;
 
+
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
@@ -215,8 +216,7 @@ open (const char *file)
     return -1;
   }
   
-  int current_ticks = ++fd_incr; 
-
+  int current_ticks = thread_current ()->fd_incr++;
   lock_release(&filesystem_lock);
 
   struct fd_map *fd_map = malloc (sizeof (fd_map));
@@ -224,7 +224,7 @@ open (const char *file)
     exit (-1);
 
   fd_map->fp = fp;
-  fd_map->fd = current_ticks + 2;
+  fd_map->fd = current_ticks;
 
   list_push_back(&thread_current ()->file_list, &fd_map->elem);
 
@@ -447,7 +447,7 @@ mmap (int fd, void *addr)
 
   mapping->addr = addr;
   mapping->fp = fp;
-  mapping->mid = ++mid_incr;
+  mapping->mid = thread_current ()->mid_incr++
 
   list_push_back (&thread_current ()->mappings, &mapping->elem);
 
