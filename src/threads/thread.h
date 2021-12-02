@@ -118,8 +118,11 @@ struct thread
     struct threadtable *parent_table;
 
     struct list file_list;              /* List of open files */
-    struct list mappings;               /* List of file to VM mappings */
+    static int fd_incr;                 /* File descriptor incrementer */
     struct file *file;                  /* File kept open */
+
+    struct list mappings;               /* List of file to VM mappings */
+    static int mid_incr;                /* Mapping id incrementer */
 #endif
 
 

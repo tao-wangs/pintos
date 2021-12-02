@@ -20,12 +20,6 @@ typedef int mapid_t;
 /* File system lock */
 struct lock filesystem_lock;
 
-/* Default file descriptor number, incremented safely in open syscall. */ 
-static int fd_incr = 2;
-
-/* Default mapping id number, incremented safely in mmap and munmap syscalls */
-static int mid_incr = 0;
-
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
@@ -443,7 +437,7 @@ mmap (int fd, void *addr)
     return -1;
   }
   
-  /* TODO: the mapping */
+  /* TODO: the mapping of the file by creating one or more new SUPPLEMENTAL pages for its data*/
 
   struct m_map *mapping = malloc (sizeof (struct m_map));
 
