@@ -423,12 +423,18 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
+// Whenever a user process wants to access some kernel functionality, it invokes a
+// system call.
 /* Reads syscall number and delegates to its corresponding function. */
 static void
 syscall_handler (struct intr_frame *f) 
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
   
+  // You will need to arrange another way, such as saving esp into struct thread on the initial transition
+  // from user to kernel mode.
+  thread_current ()->stack = (uint8_t *) f->esp;
+
   /* Sorry about the switch-case, but a hashtable is slower 
      and this is more readable. */ 
   switch (intr) {

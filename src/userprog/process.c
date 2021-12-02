@@ -554,15 +554,23 @@ setup_stack (void **esp, const char *file_name)
   uint8_t *kpage;
   bool success = false;
 
+  // In Task 2, the stack was limited a single page at the top of the user
+  // virtual address space and user programs would crash if they exceeded this limit.
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
+      // You should allocate additional stack pages only if the corresponding page fault 
+      // "appears" to be a stack access.
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
         *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
+
+
+  // The first stack page need not be allocated lazily. You can allocate and initialize it 
+  // with the command line arguments at load time, with no need to wait for it to be faulted in.
 
   uint32_t argc = 1;
   uint32_t i = 0;
