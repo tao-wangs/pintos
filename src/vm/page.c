@@ -39,7 +39,6 @@ struct page *
 locate_page (void *addr)
 {
   void *page = pg_round_down (addr); 
-  printf ("finding page at addr %p\n", page);
   struct page temp; 
   temp.addr = page;
   lock_acquire (&page_lock);
@@ -50,7 +49,6 @@ locate_page (void *addr)
     return NULL;  
   }
   struct page *p = hash_entry (e, struct page, elem);
-  printf ("thread %d located page on thread %d\n", thread_current ()->tid, p->t->tid);
   return p;
 }
 
@@ -58,7 +56,6 @@ void
 add_page (void *addr, void *data, enum page_status status)
 {
   void *pg_addr = pg_round_down (addr);
-  printf ("adding page at addr %p\n", pg_addr);
   struct page *page = malloc (sizeof (struct page));
   if (!page)
   {
@@ -68,7 +65,6 @@ add_page (void *addr, void *data, enum page_status status)
   page->data = data;
   page->status = status;
   page->t = thread_current ();
-  printf ("thread %d\n", page->t->tid);
   lock_acquire (&page_lock);
   hash_insert (&page_table, &page->elem);
   lock_release (&page_lock);

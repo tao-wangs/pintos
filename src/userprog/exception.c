@@ -157,10 +157,6 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  printf ("not_present %d write %d user %d\n", not_present, write, user);  
-  printf ("eip %p\n", f->eip);
-  printf ("fault addr %p\n", fault_addr);
-  printf ("current thread %d\n", thread_current ()->tid);
   struct page *page = locate_page (fault_addr);
 
   if (page != NULL)
@@ -170,7 +166,6 @@ page_fault (struct intr_frame *f)
       PANIC ("failed to alloc frame");
     if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true))
       PANIC ("failed to set page");
-    printf ("page status: %d\n", page->status);
     switch (page->status)
     {
       case FRAME:
@@ -182,16 +177,14 @@ page_fault (struct intr_frame *f)
       {
         //Load from file
         struct file_data *fdata = (struct file_data *) page->data;
-        printf ("Loading segment\n");
         file_seek (fdata->file, fdata->ofs);
         int bytes_read = file_read (fdata->file, frame->kPage, fdata->read_bytes);
-        printf ("Read %d bytes\n", bytes_read);
         if (bytes_read != fdata->read_bytes)
           PANIC ("FAILED TO READ SEGMENT!");
         memset (frame->kPage + fdata->read_bytes, 0, fdata->zero_bytes);
         free (fdata);
         page->data = NULL;
-        hex_dump (page->addr, page->addr, 4096, true);
+        //hex_dump (page->addr, page->addr, 4096, true);
         break;
       }
       case ZERO:

@@ -499,13 +499,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
-  printf ("ofs: %d\n", (int) ofs);
 
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
-      printf ("read_bytes: %d\n", read_bytes);
-      printf ("zero_bytes: %d\n", zero_bytes);
       /* Calculate how to fill this page.
          We will read PAGE_READ_BYTES bytes from FILE
          and zero the final PAGE_ZERO_BYTES bytes. */
@@ -532,8 +529,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           page_read_bytes -= fdata->read_bytes - PGSIZE;
           fdata->read_bytes = PGSIZE;
         }
-        printf ("page_read_bytes: %d\n", page_read_bytes);
-        printf ("new read_bytes %d\n", fdata->read_bytes);
         fdata->zero_bytes = PGSIZE - fdata->read_bytes;
         page_zero_bytes = PGSIZE - page_read_bytes;
       }
@@ -573,6 +568,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+      ofs += PGSIZE;
     }
   return true;
 }
@@ -582,7 +578,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp, const char *file_name) 
 {
-  printf ("setting up stack\n");
   bool success = false;
 
   add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME);
@@ -590,7 +585,6 @@ setup_stack (void **esp, const char *file_name)
   //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (frame != NULL) 
     {
-      printf ("installing page\n");
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame->kPage, true);
       if (success)
         *esp = PHYS_BASE;
@@ -670,7 +664,6 @@ setup_stack (void **esp, const char *file_name)
   if ((int) (PHYS_BASE - *esp) > (int) (4096 - sizeof(struct thread))) {
     return false;
   }  
-  printf ("done setting up stack\n");
   return success;
 }
 
