@@ -210,6 +210,7 @@ page_fault (struct intr_frame *f)
    might be in the file system, or in a swap slot, or it might simply be an all-zero page. When
    you implement sharing, the page’s data might even already be in a page frame, but not in
    the page table.
+   
    If the supplemental page table indicates that the user process should not expect any data
    at the address it was trying to access, or if the page lies within kernel virtual memory, or if
    the access is an attempt to write to a read-only page, then the access is invalid. Any invalid

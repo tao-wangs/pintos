@@ -119,9 +119,11 @@ struct thread
     struct threadtable *parent_table;
 
     struct list file_list;              /* List of open files */
+    int fd_incr;                 /* File descriptor incrementer */
     struct file *file;                  /* File kept open */
     struct page_table *page_table;
 #endif
+
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

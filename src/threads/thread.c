@@ -111,6 +111,8 @@ thread_init (void)
   list_init (&initial_thread->file_list);
   list_init (&initial_thread->children);
   load_avg = 0;
+  initial_thread->fd_incr = 2;
+  initial_thread->mid_incr = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -237,6 +239,9 @@ thread_create (const char *name, int priority,
   lock_init (&t->priority_list_lock);
 
   list_init (&t->file_list);
+  t->fd_incr = 2;
+  list_init (&t->mappings);
+  t->mid_incr = 0;
   if (!(t->table = threadtable_init())) 
     return TID_ERROR;
   if (!(t->page_table = pagetable_init()))
