@@ -7,6 +7,7 @@
 #include "threads/synch.h"
 #include <stdbool.h>
 #include "threads/fixed-point.h"
+#include "vm/page.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -120,9 +121,7 @@ struct thread
     struct list file_list;              /* List of open files */
     int fd_incr;                 /* File descriptor incrementer */
     struct file *file;                  /* File kept open */
-
-    struct list mappings;               /* List of file to VM mappings */
-    int mid_incr;                /* Mapping id incrementer */
+    struct page_table *page_table;
 #endif
 
 

@@ -1,10 +1,21 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "userprog/process.h"
+#include "userprog/pagedir.h"
+#include "vm/page.h"
+#include "vm/frame.h"
+#include "filesys/off_t.h"
+#include "threads/malloc.h"
+#include "threads/palloc.h"
+#include "filesys/file.h"
+
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -145,12 +156,54 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
-  
-  f->eip = (void *) f->eax; 
-  f->eax = 0xffffffff;
-  if (user)
-    exit (-1);
 
+  struct page *page = locate_page (fault_addr, thread_current()->page_table);
+
+  if (page != NULL)
+  {
+    struct frame *frame = alloc_frame (page->addr);
+    if (!frame)
+      PANIC ("failed to alloc frame");
+    if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true))
+      PANIC ("failed to set page");
+    switch (page->status)
+    {
+      case FRAME:
+        NOT_REACHED ();
+      case SWAP:
+        //Swap in
+        break;
+      case FILE_SYS:
+      {
+        //Load from file
+        struct file_data *fdata = (struct file_data *) page->data;
+        file_seek (fdata->file, fdata->ofs);
+        int bytes_read = file_read (fdata->file, frame->kPage, fdata->read_bytes);
+        if (bytes_read != fdata->read_bytes)
+          PANIC ("FAILED TO READ SEGMENT!");
+        memset (frame->kPage + fdata->read_bytes, 0, fdata->zero_bytes);
+        free (fdata);
+        page->data = NULL;
+        //hex_dump (page->addr, page->addr, 4096, true);
+        break;
+      }
+      case ZERO:
+        //Zero page
+        memset (page->addr, 0, PGSIZE);
+        break;
+    }
+    page->status = FRAME;
+  } else {
+    if (user)
+    {
+      //printf ("User page fault!\n");
+      exit (-1);
+    } else
+    {
+      f->eip = (void *) f->eax; 
+      f->eax = 0xffffffff;  
+    }
+  }
  /*
    1. Locate the page that faulted in the supplemental page table. If the memory reference is
    valid, use the supplemental page table entry to locate the data that goes in the page, which
