@@ -3,6 +3,7 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/thread.h"
 #include <stdio.h>
 
 struct hash page_table;
@@ -48,7 +49,9 @@ locate_page (void *addr)
   {
     return NULL;  
   }
-  return hash_entry (e, struct page, elem);
+  struct page *p = hash_entry (e, struct page, elem);
+  printf ("thread %d located page on thread %d\n", thread_current ()->tid, p->t->tid);
+  return p;
 }
 
 void
@@ -65,6 +68,7 @@ add_page (void *addr, void *data, enum page_status status)
   page->data = data;
   page->status = status;
   page->t = thread_current ();
+  printf ("thread %d\n", page->t->tid);
   lock_acquire (&page_lock);
   hash_insert (&page_table, &page->elem);
   lock_release (&page_lock);

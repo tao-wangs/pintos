@@ -156,19 +156,20 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
-  
+
+  printf ("not_present %d write %d user %d\n", not_present, write, user);  
   printf ("eip %p\n", f->eip);
   printf ("fault addr %p\n", fault_addr);
-
-  f->eip = (void *) f->eax; 
-  f->eax = 0xffffffff;  
-
+  printf ("current thread %d\n", thread_current ()->tid);
   struct page *page = locate_page (fault_addr);
 
   if (page != NULL)
   {
     struct frame *frame = alloc_frame (page->addr);
-    pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true);
+    if (!frame)
+      PANIC ("failed to alloc frame");
+    if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true))
+      PANIC ("failed to set page");
     printf ("page status: %d\n", page->status);
     switch (page->status)
     {
@@ -182,10 +183,15 @@ page_fault (struct intr_frame *f)
         //Load from file
         struct file_data *fdata = (struct file_data *) page->data;
         printf ("Loading segment\n");
-        if (file_read (fdata->file, frame->kPage, fdata->read_bytes) != fdata->read_bytes)
+        file_seek (fdata->file, fdata->ofs);
+        int bytes_read = file_read (fdata->file, frame->kPage, fdata->read_bytes);
+        printf ("Read %d bytes\n", bytes_read);
+        if (bytes_read != fdata->read_bytes)
           PANIC ("FAILED TO READ SEGMENT!");
         memset (frame->kPage + fdata->read_bytes, 0, fdata->zero_bytes);
         free (fdata);
+        page->data = NULL;
+        hex_dump (page->addr, page->addr, 4096, true);
         break;
       }
       case ZERO:
@@ -199,9 +205,12 @@ page_fault (struct intr_frame *f)
     {
       printf ("User page fault!\n");
       exit (-1);
+    } else
+    {
+      f->eip = (void *) f->eax; 
+      f->eax = 0xffffffff;  
     }
   }
-
  /*
    1. Locate the page that faulted in the supplemental page table. If the memory reference is
    valid, use the supplemental page table entry to locate the data that goes in the page, which
