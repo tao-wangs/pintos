@@ -447,7 +447,7 @@ mmap (int fd, void *addr)
 
   mapping->addr = addr;
   mapping->fp = fp;
-  mapping->mid = thread_current ()->mid_incr++
+  mapping->mid = thread_current ()->mid_incr++;
 
   list_push_back (&thread_current ()->mappings, &mapping->elem);
 
