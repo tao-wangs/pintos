@@ -122,6 +122,10 @@ struct thread
     int fd_incr;                 /* File descriptor incrementer */
     struct file *file;                  /* File kept open */
     struct page_table *page_table;
+
+    struct list mappings;               /* List of file to VM mappings */
+    int mid_incr;                /* Mapping id incrementer */
+
 #endif
 
 
