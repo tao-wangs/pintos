@@ -118,8 +118,10 @@ struct thread
     struct threadtable *parent_table;
 
     struct list file_list;              /* List of open files */
+    struct list mappings;               /* List of file to VM mappings */
     struct file *file;                  /* File kept open */
 #endif
+
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

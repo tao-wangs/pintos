@@ -235,6 +235,7 @@ thread_create (const char *name, int priority,
   lock_init (&t->priority_list_lock);
 
   list_init (&t->file_list);
+  list_init (&t->mappings);
   if (!(t->table = threadtable_init())) 
     return TID_ERROR;
   t->parent_table = thread_current ()->table;

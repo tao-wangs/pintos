@@ -17,9 +17,6 @@
 typedef int pid_t; 
 typedef int mapid_t;
 
-/* List of file-memory mappings */
-struct list mmappings;
-
 /* File system lock */
 struct lock filesystem_lock;
 
@@ -429,11 +426,15 @@ close (int fd)
 static mapid_t 
 mmap (int fd, void *addr)
 { 
-  if (fd == STDIN_FILENO || fd == STDOUT_FILENO || (int) addr == 0) {
+  if (fd == STDIN_FILENO || fd == STDOUT_FILENO || !addr || pg_ofs(addr) != 0) {
     return -1; 
   }
 
   struct file *fp = get_corresponding_file (fd);
+
+  if (!fp) {
+    return -1;
+  }
 
   lock_acquire (&filesystem_lock);
   
@@ -454,7 +455,7 @@ mmap (int fd, void *addr)
   mapping->fp = fp;
   mapping->mid = ++mid_incr;
 
-  list_push_back (&mmappings, &mapping->elem);
+  list_push_back (&thread_current ()->mappings, &mapping->elem);
 
   lock_release (&filesystem_lock);
 
@@ -463,8 +464,18 @@ mmap (int fd, void *addr)
 
 static void 
 munmap (mapid_t mapid_t)
-{
+{ 
+  struct list_elem *e;
+  struct list *mappings = &thread_current ()->mappings;
 
+  for (e = list_begin (mappings); e != list_end (mappings); e = list_next (e)) {
+    struct m_map *mmap = list_entry (e, struct m_map, elem);
+    if (mmap->mid == mapid_t) {
+      list_remove (&mmap->elem);
+      free (mmap);
+      break;
+    }
+  } 
 }
 
 /* Initialises system call handler and file system lock. */
@@ -472,7 +483,6 @@ void
 syscall_init (void) 
 {
   lock_init (&filesystem_lock);
-  list_init (&mmappings);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -525,7 +535,7 @@ syscall_handler (struct intr_frame *f)
       close ((int) second_arg(f));
       break;
     case SYS_MMAP:
-      mmap ((int) first_arg(f), second_arg(f));
+      f->eax = mmap ((int) first_arg(f), second_arg(f));
       break;
     case SYS_MUNMAP:
       munmap ((mapid_t) first_arg(f));
