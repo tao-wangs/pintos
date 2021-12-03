@@ -145,6 +145,17 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+
+   uint8_t *stack_pointer     = thread_current ()->stack;
+   uint8_t *fault_addr_cast   = (uint8_t *) fault_addr;
+
+   if (fault_addr_cast >= stack_pointer 
+         || fault_addr_cast == (stack_pointer - 4) 
+            || fault_addr_cast == (stack_pointer - 32)) {
+               grow_the_stack();
+               return;
+               // So that we do not continue executing the rest of this function.
+            }
   
   f->eip = (void *) f->eax; 
   f->eax = 0xffffffff;
@@ -173,20 +184,6 @@ page_fault (struct intr_frame *f)
    
    4. Point the page table entry for the faulting virtual address to the frame. You can use the
    functions in ‘userprog/pagedir.c’. */
-}
-
-bool
-fault_addr_is_a_stack_access (void * fault_addr) {
-      uint8_t *stack_pointer = thread_current ()->stack;
-      uint8_t *fault_addr_cast   = (uint8_t *) fault_addr;
-
-      if (fault_addr_cast >= stack_pointer 
-            || fault_addr_cast == (stack_pointer - 4) 
-               || fault_addr_cast == (stack_pointer - 32)) {
-                  return true;
-               } else {
-                  return false;
-               }
 }
 
 
