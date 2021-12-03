@@ -138,19 +138,6 @@ page_fault (struct intr_frame *f)
      be assured of reading CR2 before it changed). */
   intr_enable ();
 
-
-  // uint8_t stack_pointer;
-  // If we are trying to access above the stack pointer.
-  if (fault_addr > stack_pointer ||
-         // If we are trying to access 4 bytes below the stack pointer, this occurs when
-         // when we use the 80x86 PUSH instruction.
-         fault_addr = stack_pointer - 4 ||
-            // If we are trying to access 32 bytes below the stack pointer, this occurs
-            // when we use the 80x86 PUSHA instruction, which pushes 32 bytes at once.
-            fault_addr = stack_pointer - 32) {
-               // These are the cases in which we need the stack to grow!
-            }
-
   /* Count page faults. */
   page_fault_cnt++;
 
@@ -188,3 +175,36 @@ page_fault (struct intr_frame *f)
    functions in ‘userprog/pagedir.c’. */
 }
 
+bool
+fault_addr_is_a_stack_access (void * fault_addr) {
+      uint8_t *stack_pointer = thread_current ()->stack;
+      uint8_t *fault_addr_cast   = (uint8_t *) fault_addr;
+
+      if (fault_addr_cast >= stack_pointer 
+            || fault_addr_cast == (stack_pointer - 4) 
+               || fault_addr_cast == (stack_pointer - 32)) {
+                  return true;
+               } else {
+                  return false;
+               }
+}
+
+
+  // Reading the esp out of the struct intr_frame passed to page_fault() would yield 
+  // an undefined value, not the user stack pointer.
+  // You will need to arrange another way, such as saving esp into struct thread 
+  // on the initial transition from user to kernel mode.
+
+  // uint8_t stack_pointer;
+  // If we are trying to access above the stack pointer.
+  if ((uint8_t *)fault_addr > stack_pointer ||
+         // If we are trying to access 4 bytes below the stack pointer, this occurs when
+         // when we use the 80x86 PUSH instruction.
+         (uint8_t *)fault_addr == stack_pointer - 4 ||
+            // If we are trying to access 32 bytes below the stack pointer, this occurs
+            // when we use the 80x86 PUSHA instruction, which pushes 32 bytes at once.
+            (uint8_t *)fault_addr == stack_pointer - 32) {
+//            ((uint8_t *)fault_addr < stack_pointer && (uint8_t *)fault_addr >= stack_pointer - 32)
+               // These are the cases in which we need the stack to grow!
+
+            }
