@@ -21,9 +21,6 @@ struct file_data
   uint32_t read_bytes;
   uint32_t zero_bytes;
   bool writable;
-  
-  //-tao
-  uint32_t size;
 };
 
 struct page
@@ -40,15 +37,6 @@ struct page_table
   struct hash table;
   struct lock lock;
 };
-
-/*static unsigned
-page_hash (const struct hash_elem *e, void *aux UNUSED);
-
-static bool
-page_less (const struct hash_elem *a,
-           const struct hash_elem *b,
-           void *aux UNUSED);
-*/
 
 struct page_table *pagetable_init (void);
 

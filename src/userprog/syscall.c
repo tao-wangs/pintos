@@ -420,6 +420,9 @@ close (int fd)
 static mapid_t 
 mmap (int fd, void *addr)
 { 
+  /* Fails if: - fd 0 and 1 because cannot be mapped
+               - address is 0 because cannot be mapped
+               - address is not page aligned */             
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO || !addr || pg_ofs(addr) != 0) {
     return -1; 
   }
@@ -441,6 +444,14 @@ mmap (int fd, void *addr)
     return -1;
   }
 
+  //Ensure that mapping will not overlap existing mappings 
+  for (int i = 0; i <= remaining_length / PGSIZE; i++) {
+    if (locate_page ((uint8_t *) addr + i * PGSIZE, thread_current ()->page_table) != NULL) {
+      return -1;
+    }
+  }
+
+  //Begin mapping 
   struct m_map *mapping = malloc (sizeof (struct m_map));
 
   if (!mapping) {
@@ -454,14 +465,15 @@ mmap (int fd, void *addr)
 
   list_push_back (&thread_current ()->mappings, &mapping->elem);
 
+  //I will make this a bit more fine grained
   lock_release (&filesystem_lock);
   
   //could do loop with while remaining_length > PGSIZE?
   while (remaining_length > 0) {
 
-    printf("Inside while loop\n");
-    printf("Length = %d\n", remaining_length);
-    printf("Offset = %d\n", offset);
+    //printf("Inside while loop\n");
+    //printf("Length = %d\n", remaining_length);
+    //printf("Offset = %d\n", offset);
     
     struct file_data *file_data = malloc (sizeof (file_data));
 
@@ -469,18 +481,21 @@ mmap (int fd, void *addr)
       return -1;
     }
 
+    int read_bytes = remaining_length >= PGSIZE ? PGSIZE : remaining_length;
+
     file_data->file = fp;
     file_data->ofs = offset;
-    file_data->size = remaining_length >= PGSIZE ? PGSIZE : remaining_length;
+    file_data->read_bytes = read_bytes;
+    file_data->zero_bytes = PGSIZE - read_bytes;
 
     add_page ((uint8_t *) addr + offset, file_data, FILE_SYS, thread_current ()->page_table);
 
-    remaining_length -= file_data->size; 
-    offset += file_data->size;
+    remaining_length -= file_data->read_bytes;
+    offset += file_data->read_bytes;
     mapping->page_cnt++;
   }
   
-  printf("Outside while loop\n");
+  //printf("Outside while loop\n");
   
   return mapping->mid;
   
