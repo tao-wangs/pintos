@@ -12,22 +12,26 @@ extern uint32_t init_ram_pages;
 
 void 
 frametable_init (void)
-{
+{ 
+  int j = 0;
   list_init (&table.frames);
   lock_init (&frame_lock);
-  printf ("init_ram_pages: %d\n", init_ram_pages);
   for (int i = 0; i < 367; ++i)
   {
-    //printf ("Initialising frame %d\n", i);
     struct frame *f = malloc (sizeof (struct frame));
     if (!f)
       PANIC ("Failed to malloc frame");
     f->kPage = palloc_get_page (PAL_USER);
-    f->num_refs = 0;
     if (!f->kPage)
       PANIC ("FAILED to palloc frame");
+    f->num_refs = 0;
+    f->page = NULL;
+    f->accessed = false;
+    f->fid = j;
     list_push_back (&table.frames, &f->elem);
+    j++;
   }
+
 }
 
 void
@@ -59,11 +63,24 @@ locate_frame (void *page, struct inode *node)
 }
 
 struct frame *
-alloc_frame (void *page, bool writable, struct inode *node, bool *shared)
-{
-  bool allocated = false;
-  lock_acquire (&frame_lock);
+find_free_frame () {
+  for (struct list_elem *e = list_begin (&table.frames);
+       e != list_end (&table.frames);
+       e = list_next (e))
+  {
+    f = list_entry (e, struct frame, elem);
+    if (!f->page)
+    {
+      return f;
+    }
+  }
+  return NULL;
+}
 
+struct frame *
+alloc_frame (void *page)
+{
+  lock_acquire (&frame_lock);
   struct frame *f;
 
   if (!writable && node) {
@@ -75,29 +92,19 @@ alloc_frame (void *page, bool writable, struct inode *node, bool *shared)
       return f;
     }
   }
+
+  f = find_free_frame();
   
-  for (struct list_elem *e = list_begin (&table.frames);
-       e != list_end (&table.frames);
-       e = list_next (e))
-  {
-    f = list_entry (e, struct frame, elem);
-    if (!f->page)
-    {
-      f->page = page;
-      f->writable = writable;
-      f->num_refs++;
-      f->file_node = node;
-      allocated = true;
-      break;
-    }
+  if (f) {
+    f->page = page;
+    f->writable = writable;
+    f->num_refs++;
+    f->file_node = node;
+    allocated = true;
+    lock_release (&frame_lock);
+    return f;
   }
-  
-  lock_release (&frame_lock);
-  if (!allocated)
-  {
-    PANIC ("alloc_frame: no free frames!"); 
-  }
-  return f;
+  PANIC ("alloc_frame: no free frames!"); 
 }
 
 void
@@ -125,4 +132,8 @@ free_frame (void *kpage)
   list_push_front (&table.frames, &f->elem);
   
   lock_release (&frame_lock);
+}
+
+void size () {
+  printf("Size is %d\n", list_size(&table.frames));
 }

@@ -5,6 +5,7 @@
 #include "filesys/file.h"
 
 struct frame {
+  int fid;
   struct list_elem elem;
   void *page;
   void *kPage;
@@ -26,6 +27,10 @@ struct frame *alloc_frame (void *page, bool writable, struct inode *exe, bool *s
 
 struct frame *locate_frame (void *page, struct inode *node); 
 
+struct frame *find_free_frame ();
+
 void free_frame (void *kpage);
+
+void size();
 
 #endif /* vm/frame.h */

@@ -581,10 +581,9 @@ setup_stack (void **esp, const char *file_name)
 
   add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table, true);
   struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE, true, NULL, NULL);
-  //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (frame != NULL) 
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame->kPage, true);
+    { 
+      success = install_page ((uint8_t *) PHYS_BASE - PGSIZE, frame->kPage, true);
       if (success)
         *esp = PHYS_BASE;
       else
