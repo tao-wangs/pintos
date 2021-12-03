@@ -121,6 +121,7 @@ struct thread
     struct file *file;                  /* File kept open */
 #endif
 
+    void *esp;                          /* Stack pointer */                          
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

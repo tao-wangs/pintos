@@ -146,15 +146,18 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-   uint8_t *stack_pointer     = thread_current ()->stack;
-   uint8_t *fault_addr_cast   = (uint8_t *) fault_addr;
+   void *stack_pointer = thread_current ()->esp;
 
-   if (fault_addr_cast >= stack_pointer 
-         || fault_addr_cast == (stack_pointer - 4) 
-            || fault_addr_cast == (stack_pointer - 32)) {
-               grow_the_stack();
+
+ /*  if (((fault_addr < PHYS_BASE && fault_addr >= stack_pointer) 
+         || fault_addr == (stack_pointer - 4) 
+            || fault_addr == (stack_pointer - 32)) && write) { */
+
+    /* The PUSH and PUSHA instructions are not the only instructions
+      that can trigger user stack growth. */     
+      if (fault_addr < PHYS_BASE && fault_addr >= stack_pointer - 32 && write) {
+               grow_the_stack(fault_addr);
                return;
-               // So that we do not continue executing the rest of this function.
             }
   
   f->eip = (void *) f->eax; 
@@ -186,22 +189,25 @@ page_fault (struct intr_frame *f)
    functions in ‘userprog/pagedir.c’. */
 }
 
+static void
+grow_the_stack (void *fault_addr) {
+   struct thread *current_thread = thread_current ();
 
-  // Reading the esp out of the struct intr_frame passed to page_fault() would yield 
-  // an undefined value, not the user stack pointer.
-  // You will need to arrange another way, such as saving esp into struct thread 
-  // on the initial transition from user to kernel mode.
+   // You should impose some absolute limit on stack size, on
+   // many GNU/Linux systems, the default limit is 8 MB.
+   if ((current_thread + PGSIZE) - (current_thread->esp) >= MAX_STACK_SIZE) {
+      exit(-1);
+   }
 
-  // uint8_t stack_pointer;
-  // If we are trying to access above the stack pointer.
-  if ((uint8_t *)fault_addr > stack_pointer ||
-         // If we are trying to access 4 bytes below the stack pointer, this occurs when
-         // when we use the 80x86 PUSH instruction.
-         (uint8_t *)fault_addr == stack_pointer - 4 ||
-            // If we are trying to access 32 bytes below the stack pointer, this occurs
-            // when we use the 80x86 PUSHA instruction, which pushes 32 bytes at once.
-            (uint8_t *)fault_addr == stack_pointer - 32) {
-//            ((uint8_t *)fault_addr < stack_pointer && (uint8_t *)fault_addr >= stack_pointer - 32)
-               // These are the cases in which we need the stack to grow!
+   struct page *new_page = add_page(current_thread->esp, NULL, FRAME, 
+                              current_thread->page_table);
 
-            }
+   struct frame *new_frame = alloc_frame(fault_addr);
+   if (new_frame == NULL) {
+      PANIC("Unable to allocate a new frame, to extend the stack");
+   }
+
+   struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE);
+   pagedir_set_page(current_thread->pagedir, current_thread->esp, 
+                        new_frame->kPage, true);
+}
