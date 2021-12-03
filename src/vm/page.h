@@ -20,7 +20,6 @@ struct file_data
   off_t ofs;
   uint32_t read_bytes;
   uint32_t zero_bytes;
-  bool writable;
 };
 
 struct page
@@ -30,6 +29,7 @@ struct page
   enum page_status status;
   void *data;
   struct thread *t;
+  bool writable;
 };
 
 struct page_table
@@ -42,7 +42,7 @@ struct page_table *pagetable_init (void);
 
 struct page *locate_page (void *addr, struct page_table *page_table);
 
-void add_page (void *addr, void *data, enum page_status status, struct page_table *page_table);
+void add_page (void *addr, void *data, enum page_status status, struct page_table *page_table, bool writable);
 
 void remove_page (void *addr, struct page_table *page_table);
 

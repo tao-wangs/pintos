@@ -519,8 +519,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         fdata->ofs = ofs;
         fdata->read_bytes = page_read_bytes;
         fdata->zero_bytes = page_zero_bytes;
-        fdata->writable = writable;
-        add_page ((void *) upage, (void *) fdata, FILE_SYS, thread_current()->page_table);
+        add_page ((void *) upage, (void *) fdata, FILE_SYS, thread_current()->page_table, writable);
       } else
       {
         struct file_data *fdata = (struct file_data *) page->data;
@@ -580,7 +579,7 @@ setup_stack (void **esp, const char *file_name)
 {
   bool success = false;
 
-  add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table);
+  add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table, true);
   struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE);
   //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (frame != NULL) 

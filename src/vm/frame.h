@@ -8,6 +8,7 @@ struct frame {
   void *page;
   void *kPage;
   bool accessed;
+  //? bool writable;
 };
 
 struct frametable {

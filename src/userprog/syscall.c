@@ -149,7 +149,7 @@ exit (int status)
 
   printf ("%s: exit(%d)\n", cur->name, status);  
   childExit (cur->parent_table, cur->tid, status);
-  
+
   struct list_elem *e = list_begin (&cur->mappings);
   
   while (e != list_end (&cur->mappings)) {
@@ -496,7 +496,7 @@ mmap (int fd, void *addr)
     file_data->read_bytes = read_bytes;
     file_data->zero_bytes = PGSIZE - read_bytes;
 
-    add_page ((uint8_t *) addr + offset, file_data, FILE_SYS, thread_current ()->page_table);
+    add_page ((uint8_t *) addr + offset, file_data, FILE_SYS, thread_current ()->page_table, true);
 
     remaining_length -= file_data->read_bytes;
     offset += file_data->read_bytes;

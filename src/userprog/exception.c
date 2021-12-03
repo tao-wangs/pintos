@@ -165,7 +165,7 @@ page_fault (struct intr_frame *f)
     struct frame *frame = alloc_frame (page->addr);
     if (!frame)
       PANIC ("failed to alloc frame");
-    if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true))
+    if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, page->writable))
       PANIC ("failed to set page");
     switch (page->status)
     {

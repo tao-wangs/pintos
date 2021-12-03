@@ -51,7 +51,7 @@ locate_page (void *addr, struct page_table *page_table)
 }
 
 void
-add_page (void *addr, void *data, enum page_status status, struct page_table *page_table)
+add_page (void *addr, void *data, enum page_status status, struct page_table *page_table, bool writable)
 {
   void *pg_addr = pg_round_down (addr);
   struct page *page = malloc (sizeof (struct page));
@@ -62,6 +62,7 @@ add_page (void *addr, void *data, enum page_status status, struct page_table *pa
   page->addr = pg_addr;
   page->data = data;
   page->status = status;
+  page->writable = writable;
   page->t = thread_current ();
   lock_acquire (&page_table->lock);
   hash_insert (&page_table->table, &page->elem);

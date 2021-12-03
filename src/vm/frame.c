@@ -42,6 +42,23 @@ frametable_free (void)
 }
 
 struct frame *
+locate_frame (void *page) 
+{
+  
+  for (struct list_elem *e = list_begin (&table.frames);
+       e != list_end (&table.frames);
+       e = list_next (e))
+  {
+    struct frame *f = list_entry (e, struct frame, elem);
+    if (f->page == page) {
+      return f;
+    }
+  }
+}
+
+//If a frame contains the 
+
+struct frame *
 alloc_frame (void *page)
 {
   bool allocated = false;
