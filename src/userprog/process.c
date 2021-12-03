@@ -561,6 +561,8 @@ setup_stack (void **esp, const char *file_name)
     {
       // You should allocate additional stack pages only if the corresponding page fault 
       // "appears" to be a stack access.
+      // This will be in the case where you access above the stack pointer, 4 bytes below
+      // or 32 bytes below.
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
         *esp = PHYS_BASE;
@@ -571,7 +573,9 @@ setup_stack (void **esp, const char *file_name)
 
   // The first stack page need not be allocated lazily. You can allocate and initialize it 
   // with the command line arguments at load time, with no need to wait for it to be faulted in.
-
+  
+  // You will need to be able to obtain the current value of the user program's stack pointer.
+  
   uint32_t argc = 1;
   uint32_t i = 0;
 
