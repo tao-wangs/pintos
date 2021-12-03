@@ -456,7 +456,7 @@ mmap (int fd, void *addr)
 
   lock_release (&filesystem_lock);
   
-
+  //could do loop with while remaining_length > PGSIZE?
   while (remaining_length > 0) {
 
     printf("Inside while loop\n");
@@ -497,7 +497,7 @@ munmap (mapid_t mapid_t)
     if (mmap->mid == mapid_t) {
       for (int i = mmap->page_cnt; i > 0; i--) 
       {
-        remove_page (mmap->addr, thread_current ()->page_table);
+        remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
       }
       list_remove (&mmap->elem);
       free (mmap);
