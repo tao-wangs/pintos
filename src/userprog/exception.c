@@ -156,28 +156,19 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
-<<<<<<< HEAD
 
    void *stack_pointer = thread_current ()->esp;
 
-
- /*  if (((fault_addr < PHYS_BASE && fault_addr >= stack_pointer) 
-         || fault_addr == (stack_pointer - 4) 
-            || fault_addr == (stack_pointer - 32)) && write) { */
-
     /* The PUSH and PUSHA instructions are not the only instructions
       that can trigger user stack growth. */     
-      if (fault_addr < PHYS_BASE && fault_addr >= stack_pointer - 32 && write) {
-               grow_the_stack(fault_addr);
-               return;
-            }
-  
-  f->eip = (void *) f->eax; 
-  f->eax = 0xffffffff;
-  if (user)
-    exit (-1);
-=======
->>>>>>> 44126f4ed755120acd352ee83179e8865792c246
+  /* if (fault_addr < PHYS_BASE && fault_addr >= stack_pointer - 32 && write) {
+      grow_the_stack(fault_addr);
+      return;
+   } */
+
+   if (is_a_stack_access(not_present, write, user, fault_addr)) {
+      grow_the_stack(fault_addr);
+   }
 
   struct page *page = locate_page (fault_addr, thread_current()->page_table);
 
@@ -226,6 +217,7 @@ page_fault (struct intr_frame *f)
       f->eax = 0xffffffff;  
     }
   }
+}
  /*
    1. Locate the page that faulted in the supplemental page table. If the memory reference is
    valid, use the supplemental page table entry to locate the data that goes in the page, which
@@ -249,27 +241,36 @@ page_fault (struct intr_frame *f)
    
    4. Point the page table entry for the faulting virtual address to the frame. You can use the
    functions in ‘userprog/pagedir.c’. */
+
+bool
+is_a_stack_access (bool not_present, bool write, bool user, void *fault_addr) {
+   void *stack_pointer = thread_current ()->esp;
+   return (fault_addr < PHYS_BASE && fault_addr >= stack_pointer - 32 && write);
 }
 
 static void
 grow_the_stack (void *fault_addr) {
    struct thread *current_thread = thread_current ();
-
-   // You should impose some absolute limit on stack size, on
-   // many GNU/Linux systems, the default limit is 8 MB.
+   void *rounded_fault_addr = pg_round_down(fault_addr);
+   /* You should impose some absolute limit on stack size, on
+      many GNU/Linux systems, the default limit is 8 MB. */
    if ((current_thread + PGSIZE) - (current_thread->esp) >= MAX_STACK_SIZE) {
       exit(-1);
    }
 
-   struct page *new_page = add_page(current_thread->esp, NULL, FRAME, 
-                              current_thread->page_table);
+   /* Using palloc_get_page to get an extra page so that we can extend
+      the stack of the current thread. */
+   struct page *new_page = palloc_get_page(PAL_USER | PAL_ZERO);
+   add_page(current_thread->esp, NULL, FRAME, current_thread->page_table);
+
+   /* struct page *new_page = add_page(current_thread->esp, NULL, FRAME, 
+                              current_thread->page_table); */
 
    struct frame *new_frame = alloc_frame(fault_addr);
    if (new_frame == NULL) {
-      PANIC("Unable to allocate a new frame, to extend the stack");
+      PANIC("Unable to allocate a new frame to extend the stack.");
    }
 
-   struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE);
    pagedir_set_page(current_thread->pagedir, current_thread->esp, 
                         new_frame->kPage, true);
 }

@@ -124,7 +124,8 @@ struct thread
     struct page_table *page_table;
 #endif
 
-    void *esp;                          /* Stack pointer */                          
+    void *esp;                          /* Stack pointer */  
+                            
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
