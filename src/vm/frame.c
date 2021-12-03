@@ -105,7 +105,7 @@ free_frame (void *page)
   lock_acquire (&frame_lock);
   struct frame *f = locate_frame (page);
 
-  if (!f || !f->num_refs--) {
+  if (!f || f->num_refs--) {
     lock_release (&frame_lock);
     return;
   }
