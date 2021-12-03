@@ -162,7 +162,7 @@ page_fault (struct intr_frame *f)
 
   if (page != NULL)
   {
-    struct frame *frame = alloc_frame (page->addr);
+    struct frame *frame = alloc_frame (page->addr, page->writable);
     if (!frame)
       PANIC ("failed to alloc frame");
     if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, page->writable))
@@ -200,7 +200,7 @@ page_fault (struct intr_frame *f)
         memset (page->addr, 0, PGSIZE);
         break;
     }
-    page->status = FRAME;
+    page->status = FRAME; 
   } else {
     if (user)
     {

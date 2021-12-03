@@ -8,7 +8,8 @@ struct frame {
   void *page;
   void *kPage;
   bool accessed;
-  //? bool writable;
+  bool writable;
+  int num_refs;
 };
 
 struct frametable {
@@ -19,7 +20,9 @@ void frametable_init (void);
 
 void frametable_free (void);
 
-struct frame *alloc_frame (void *page);
+struct frame *alloc_frame (void *page, bool writable);
+
+struct frame *locate_frame (void *page); 
 
 void free_frame (void *page);
 

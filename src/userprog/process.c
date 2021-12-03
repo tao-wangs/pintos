@@ -580,7 +580,7 @@ setup_stack (void **esp, const char *file_name)
   bool success = false;
 
   add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table, true);
-  struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE);
+  struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE, true);
   //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (frame != NULL) 
     {

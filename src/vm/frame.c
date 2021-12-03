@@ -23,6 +23,7 @@ frametable_init (void)
     if (!f)
       PANIC ("Failed to malloc frame");
     f->kPage = palloc_get_page (PAL_USER);
+    f->num_refs = 0;
     if (!f->kPage)
       PANIC ("FAILED to palloc frame");
     list_push_back (&table.frames, &f->elem);
@@ -41,10 +42,10 @@ frametable_free (void)
   } 
 }
 
+// Protected by frame lock before calling
 struct frame *
 locate_frame (void *page) 
 {
-  
   for (struct list_elem *e = list_begin (&table.frames);
        e != list_end (&table.frames);
        e = list_next (e))
@@ -54,16 +55,26 @@ locate_frame (void *page)
       return f;
     }
   }
+  return NULL;
 }
 
-//If a frame contains the 
-
 struct frame *
-alloc_frame (void *page)
+alloc_frame (void *page, bool writable)
 {
+  
   bool allocated = false;
   lock_acquire (&frame_lock);
+
   struct frame *f;
+
+  if (!writable) {
+    f = locate_frame (page);
+    if (f && !f->writable) {
+      f->num_refs++;
+      return f;
+    }
+  }
+  
   for (struct list_elem *e = list_begin (&table.frames);
        e != list_end (&table.frames);
        e = list_next (e))
@@ -72,10 +83,13 @@ alloc_frame (void *page)
     if (!f->page)
     {
       f->page = page;
+      f->writable = writable;
+      f->num_refs++;
       allocated = true;
       break;
     }
   }
+  
   lock_release (&frame_lock);
   if (!allocated)
   {
@@ -87,18 +101,17 @@ alloc_frame (void *page)
 void
 free_frame (void *page)
 {
-  lock_acquire (&frame_lock); 
-  for (struct list_elem *e = list_begin (&table.frames);
-       e != list_end (&table.frames);
-       e = list_next (e))
-  {
-    struct frame *f = list_entry (e, struct frame, elem);
-    if (f->page == page)
-    {
-      f->page = NULL;
-      list_remove (e);
-      list_push_front (&table.frames, e);
-    }
+  lock_acquire (&frame_lock);
+  struct frame *f = locate_frame (page);
+
+  if (!f || f->num_refs--) {
+    lock_release (&frame_lock);
+    return;
   }
+
+  f->page = NULL;
+  list_remove (&f->elem);
+  list_push_front (&table.frames, &f->elem);
+  
   lock_release (&frame_lock);
 }
