@@ -71,6 +71,7 @@ alloc_frame (void *page, bool writable)
     f = locate_frame (page);
     if (f && !f->writable) {
       f->num_refs++;
+      lock_release (&frame_lock);
       return f;
     }
   }
