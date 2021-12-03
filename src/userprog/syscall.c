@@ -20,7 +20,6 @@ typedef int mapid_t;
 /* File system lock */
 struct lock filesystem_lock;
 
-
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
@@ -124,7 +123,7 @@ get_corresponding_file (int fd)
 
   struct list_elem *e;
 
-  for(e = list_begin (files); e != list_end (files); e = list_next (e)){
+  for (e = list_begin (files); e != list_end (files); e = list_next (e)){
     struct fd_map *current_fd_map = list_entry (e, struct fd_map, elem);
     if (current_fd_map->fd == fd){
       return current_fd_map->fp;
@@ -150,7 +149,16 @@ exit (int status)
 
   printf ("%s: exit(%d)\n", cur->name, status);  
   childExit (cur->parent_table, cur->tid, status);
-
+  
+  struct list_elem *e = list_begin (&cur->mappings);
+  
+  while (e != list_end (&cur->mappings)) {
+    struct list_elem *next = list_next (e);
+    struct m_map *mmap = list_entry (e, struct m_map, elem);
+    munmap (mmap->mid);
+    e = next;
+  }
+  
   thread_exit ();
 }
 
