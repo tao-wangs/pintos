@@ -11,15 +11,15 @@
 #include "filesys/file.h"
 #include "threads/threadtable.h"
 #include "threads/malloc.h"
+#include "vm/mmap.h"
 #include <string.h>
 
 typedef int pid_t; 
+typedef int mapid_t;
 
 /* File system lock */
 struct lock filesystem_lock;
 
-/* Default file descriptor number, incremented safely in open syscall. */ 
-static int fd_incr = 2;
 
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
@@ -36,6 +36,9 @@ static int write (int fd, const void *buffer, unsigned length);
 static void seek (int fd, unsigned position);
 static unsigned tell (int fd);
 static void close (int fd);
+
+static mapid_t mmap (int fd, void *addr);
+static void munmap (mapid_t);
 
 static void *first_arg (struct intr_frame *f);
 static void *second_arg (struct intr_frame *f);
@@ -213,8 +216,7 @@ open (const char *file)
     return -1;
   }
   
-  int current_ticks = ++fd_incr; 
-
+  int current_ticks = thread_current ()->fd_incr++;
   lock_release(&filesystem_lock);
 
   struct fd_map *fd_map = malloc (sizeof (fd_map));
@@ -222,7 +224,7 @@ open (const char *file)
     exit (-1);
 
   fd_map->fp = fp;
-  fd_map->fd = current_ticks + 2;
+  fd_map->fd = current_ticks;
 
   list_push_back(&thread_current ()->file_list, &fd_map->elem);
 
@@ -415,6 +417,61 @@ close (int fd)
   lock_release (&filesystem_lock);
 }
 
+static mapid_t 
+mmap (int fd, void *addr)
+{ 
+  if (fd == STDIN_FILENO || fd == STDOUT_FILENO || !addr || pg_ofs(addr) != 0) {
+    return -1; 
+  }
+
+  struct file *fp = get_corresponding_file (fd);
+
+  if (!fp) {
+    return -1;
+  }
+
+  lock_acquire (&filesystem_lock);
+  
+  if (!file_length (fp)) {
+    lock_release (&filesystem_lock);
+    return -1;
+  }
+  
+  /* TODO: the mapping of the file by creating one or more new SUPPLEMENTAL pages for its data*/
+
+  struct m_map *mapping = malloc (sizeof (struct m_map));
+
+  if (!mapping) {
+    exit (-1); //or return -1?
+  }
+
+  mapping->addr = addr;
+  mapping->fp = fp;
+  mapping->mid = thread_current ()->mid_incr++;
+
+  list_push_back (&thread_current ()->mappings, &mapping->elem);
+
+  lock_release (&filesystem_lock);
+
+  return mapping->mid;
+}
+
+static void 
+munmap (mapid_t mapid_t)
+{ 
+  struct list_elem *e;
+  struct list *mappings = &thread_current ()->mappings;
+
+  for (e = list_begin (mappings); e != list_end (mappings); e = list_next (e)) {
+    struct m_map *mmap = list_entry (e, struct m_map, elem);
+    if (mmap->mid == mapid_t) {
+      list_remove (&mmap->elem);
+      free (mmap);
+      break;
+    }
+  } 
+}
+
 /* Initialises system call handler and file system lock. */
 void
 syscall_init (void) 
@@ -479,6 +536,12 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_CLOSE:
       close ((int) second_arg(f));
+      break;
+    case SYS_MMAP:
+      f->eax = mmap ((int) first_arg(f), second_arg(f));
+      break;
+    case SYS_MUNMAP:
+      munmap ((mapid_t) first_arg(f));
       break;
     default:
       /* Will terminate the current user process if an 
