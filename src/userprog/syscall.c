@@ -20,7 +20,6 @@ typedef int mapid_t;
 /* File system lock */
 struct lock filesystem_lock;
 
-
 static void syscall_handler (struct intr_frame *);
 struct file *get_corresponding_file (int fd);
 static void halt(void);
@@ -124,7 +123,7 @@ get_corresponding_file (int fd)
 
   struct list_elem *e;
 
-  for(e = list_begin (files); e != list_end (files); e = list_next (e)){
+  for (e = list_begin (files); e != list_end (files); e = list_next (e)){
     struct fd_map *current_fd_map = list_entry (e, struct fd_map, elem);
     if (current_fd_map->fd == fd){
       return current_fd_map->fp;
@@ -150,7 +149,16 @@ exit (int status)
 
   printf ("%s: exit(%d)\n", cur->name, status);  
   childExit (cur->parent_table, cur->tid, status);
-
+  
+  struct list_elem *e = list_begin (&cur->mappings);
+  
+  while (e != list_end (&cur->mappings)) {
+    struct list_elem *next = list_next (e);
+    struct m_map *mmap = list_entry (e, struct m_map, elem);
+    munmap (mmap->mid);
+    e = next;
+  }
+  
   thread_exit ();
 }
 
@@ -420,6 +428,9 @@ close (int fd)
 static mapid_t 
 mmap (int fd, void *addr)
 { 
+  /* Fails if: - fd 0 and 1 because cannot be mapped
+               - address is 0 because cannot be mapped
+               - address is not page aligned */             
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO || !addr || pg_ofs(addr) != 0) {
     return -1; 
   }
@@ -430,15 +441,25 @@ mmap (int fd, void *addr)
     return -1;
   }
 
+  int offset = 0;
+
   lock_acquire (&filesystem_lock);
+
+  int remaining_length = file_length (fp);
   
-  if (!file_length (fp)) {
+  if (!remaining_length) {
     lock_release (&filesystem_lock);
     return -1;
   }
-  
-  /* TODO: the mapping of the file by creating one or more new SUPPLEMENTAL pages for its data*/
 
+  //Ensure that mapping will not overlap existing mappings 
+  for (int i = 0; i <= remaining_length / PGSIZE; i++) {
+    if (locate_page ((uint8_t *) addr + i * PGSIZE, thread_current ()->page_table) != NULL) {
+      return -1;
+    }
+  }
+
+  //Begin mapping 
   struct m_map *mapping = malloc (sizeof (struct m_map));
 
   if (!mapping) {
@@ -448,12 +469,44 @@ mmap (int fd, void *addr)
   mapping->addr = addr;
   mapping->fp = fp;
   mapping->mid = thread_current ()->mid_incr++;
+  mapping->page_cnt = 0;
 
   list_push_back (&thread_current ()->mappings, &mapping->elem);
 
+  //I will make this a bit more fine grained
   lock_release (&filesystem_lock);
+  
+  //could do loop with while remaining_length > PGSIZE?
+  while (remaining_length > 0) {
 
+    //printf("Inside while loop\n");
+    //printf("Length = %d\n", remaining_length);
+    //printf("Offset = %d\n", offset);
+    
+    struct file_data *file_data = malloc (sizeof (file_data));
+
+    if (!file_data) {
+      return -1;
+    }
+
+    int read_bytes = remaining_length >= PGSIZE ? PGSIZE : remaining_length;
+
+    file_data->file = fp;
+    file_data->ofs = offset;
+    file_data->read_bytes = read_bytes;
+    file_data->zero_bytes = PGSIZE - read_bytes;
+
+    add_page ((uint8_t *) addr + offset, file_data, FILE_SYS, thread_current ()->page_table);
+
+    remaining_length -= file_data->read_bytes;
+    offset += file_data->read_bytes;
+    mapping->page_cnt++;
+  }
+  
+  //printf("Outside while loop\n");
+  
   return mapping->mid;
+  
 }
 
 static void 
@@ -465,6 +518,10 @@ munmap (mapid_t mapid_t)
   for (e = list_begin (mappings); e != list_end (mappings); e = list_next (e)) {
     struct m_map *mmap = list_entry (e, struct m_map, elem);
     if (mmap->mid == mapid_t) {
+      for (int i = mmap->page_cnt; i > 0; i--) 
+      {
+        remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
+      }
       list_remove (&mmap->elem);
       free (mmap);
       break;

@@ -38,15 +38,6 @@ struct page_table
   struct lock lock;
 };
 
-/*static unsigned
-page_hash (const struct hash_elem *e, void *aux UNUSED);
-
-static bool
-page_less (const struct hash_elem *a,
-           const struct hash_elem *b,
-           void *aux UNUSED);
-*/
-
 struct page_table *pagetable_init (void);
 
 struct page *locate_page (void *addr, struct page_table *page_table);
