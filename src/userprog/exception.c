@@ -166,7 +166,7 @@ page_fault (struct intr_frame *f)
       return;
    } */
 
-   if (is_a_stack_access(not_present, write, user, fault_addr)) {
+   if (is_a_stack_access(write, fault_addr)) {
       grow_the_stack(fault_addr);
    }
 
@@ -243,34 +243,49 @@ page_fault (struct intr_frame *f)
    functions in ‘userprog/pagedir.c’. */
 
 bool
-is_a_stack_access (bool not_present, bool write, bool user, void *fault_addr) {
+is_a_stack_access (bool write, void *fault_addr) {
    void *stack_pointer = thread_current ()->esp;
-   return (fault_addr < PHYS_BASE && fault_addr >= stack_pointer - 32 && write);
+   return (fault_addr < PHYS_BASE && (fault_addr >= (stack_pointer - 32)) && write);
 }
 
-static void
+void
 grow_the_stack (void *fault_addr) {
    struct thread *current_thread = thread_current ();
    void *rounded_fault_addr = pg_round_down(fault_addr);
    /* You should impose some absolute limit on stack size, on
       many GNU/Linux systems, the default limit is 8 MB. */
-   if ((current_thread + PGSIZE) - (current_thread->esp) >= MAX_STACK_SIZE) {
+   
+   
+   // if (PHYS_BASE - rounded_fault_addr >= MAX_STACK_SIZE) {
+   //    exit(-1);
+   // }
+   
+   /* Needed to cast the esp, as pointer arithmetic is not possible
+      on void pointers. */
+   if ((uint8_t) (current_thread + PGSIZE) - (uint8_t) current_thread->esp >= MAX_STACK_SIZE) {
       exit(-1);
    }
 
    /* Using palloc_get_page to get an extra page so that we can extend
       the stack of the current thread. */
+   /* We use PAL_USER as a parameter so that we are allocated a page from
+      user spaces */
    struct page *new_page = palloc_get_page(PAL_USER | PAL_ZERO);
+   /* We are using this to add our new page to the frame table of the current
+      thread. */
    add_page(current_thread->esp, NULL, FRAME, current_thread->page_table);
 
-   /* struct page *new_page = add_page(current_thread->esp, NULL, FRAME, 
-                              current_thread->page_table); */
-
+   /* We use this to allocate a new frame, and pass in the fault_addr as a 
+      parameter to this function. */
    struct frame *new_frame = alloc_frame(fault_addr);
-   if (new_frame == NULL) {
+   if (new_frame == NULL) { 
       PANIC("Unable to allocate a new frame to extend the stack.");
    }
-
-   pagedir_set_page(current_thread->pagedir, current_thread->esp, 
-                        new_frame->kPage, true);
+      
+   bool successful_memory_allocation = pagedir_set_page(current_thread->pagedir, 
+                     current_thread->esp, new_frame->kPage, true);
+   
+   if (!successful_memory_allocation) {
+      free_frame (new_frame);
+   }
 }
