@@ -252,24 +252,23 @@ void
 grow_the_stack (void *fault_addr) {
    struct thread *current_thread = thread_current ();
    void *rounded_fault_addr = pg_round_down(fault_addr);
-   /* You should impose some absolute limit on stack size, on
-      many GNU/Linux systems, the default limit is 8 MB. */
-   
-   
+
    // if (PHYS_BASE - rounded_fault_addr >= MAX_STACK_SIZE) {
    //    exit(-1);
    // }
-   
-   /* Needed to cast the esp, as pointer arithmetic is not possible
+
+   /* You should impose some absolute limit on stack size, on
+      many GNU/Linux systems, the default limit is 8 MB. Needed 
+      to cast the esp, as pointer arithmetic is not possible
       on void pointers. */
    if ((uint8_t) (current_thread + PGSIZE) - (uint8_t) current_thread->esp >= MAX_STACK_SIZE) {
       exit(-1);
    }
 
    /* Using palloc_get_page to get an extra page so that we can extend
-      the stack of the current thread. */
-   /* We use PAL_USER as a parameter so that we are allocated a page from
-      user spaces */
+      the stack of the current thread.
+      We use PAL_USER as a parameter so that we are allocated a page from
+      user spaces. */
    struct page *new_page = palloc_get_page(PAL_USER | PAL_ZERO);
    /* We are using this to add our new page to the frame table of the current
       thread. */
