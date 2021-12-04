@@ -244,35 +244,47 @@ page_fault (struct intr_frame *f)
 
 bool
 is_a_stack_access (bool write, void *fault_addr) {
-   void *stack_pointer = thread_current ()->esp;
-   return (fault_addr < PHYS_BASE && (fault_addr >= (stack_pointer - 32)) && write);
+   return (fault_addr < PHYS_BASE && (fault_addr >= (thread_current ()->esp - 32)) && write);
 }
 
 void
 grow_the_stack (void *fault_addr) {
    struct thread *current_thread = thread_current ();
+   /* rounded_fault_addr is the start of the virtual page that the 
+      fault_addr points within. */
    void *rounded_fault_addr = pg_round_down(fault_addr);
-
-   // if (PHYS_BASE - rounded_fault_addr >= MAX_STACK_SIZE) {
-   //    exit(-1);
-   // }
 
    /* You should impose some absolute limit on stack size, on
       many GNU/Linux systems, the default limit is 8 MB. Needed 
       to cast the esp, as pointer arithmetic is not possible
       on void pointers. */
+
+   /* Perhaps an alternative method for checking if the stack has grown past the limit that
+      we have imposed. Here we have used the rounded address, as once we have added the page 
+      to the stack, we will be looking at the page boundary itself as we can only add whole
+      pages. */
+   // if (PHYS_BASE - rounded_fault_addr >= MAX_STACK_SIZE) {
+   //    exit(-1);
+   // }
+   
    if ((uint8_t) (current_thread + PGSIZE) - (uint8_t) current_thread->esp >= MAX_STACK_SIZE) {
       exit(-1);
    }
 
-   /* Using palloc_get_page to get an extra page so that we can extend
-      the stack of the current thread.
+   /* Using palloc_get_page to obtain and return an extra page so that we 
+      can extend the stack of the current thread.
       We use PAL_USER as a parameter so that we are allocated a page from
-      user spaces. */
+      the user pool. We also use PAL_ZERO as a parameter so that it zeroes
+      the remainding bytes of the allocated pages before it is returned, so
+      that the contents of the page is not unpredictable. */
    struct page *new_page = palloc_get_page(PAL_USER | PAL_ZERO);
-   /* We are using this to add our new page to the frame table of the current
+
+   /* We are using this to add our new page to the page table of the current
       thread. */
+   // The add_page function will handle the rounding down of the stack pointer
+   // for us, so we do not need to explicitly do it.
    add_page(current_thread->esp, NULL, FRAME, current_thread->page_table);
+   
 
    /* We use this to allocate a new frame, and pass in the fault_addr as a 
       parameter to this function. */
@@ -281,10 +293,18 @@ grow_the_stack (void *fault_addr) {
       PANIC("Unable to allocate a new frame to extend the stack.");
    }
       
+   /* We use pagedir_set_page to add to the pagedir of the current thread a mapping
+      from the stack pointer to the new_frame, which we identify by using its kPage
+      field. We also pass in true as a parameter so that the page mapped is 
+      read / write. */
    bool successful_memory_allocation = pagedir_set_page(current_thread->pagedir, 
                      current_thread->esp, new_frame->kPage, true);
    
+   /* This returns false on failiure, in which case additional memory required for the 
+      page table cannot be obtained. */
    if (!successful_memory_allocation) {
       free_frame (new_frame);
    }
+
+   // Is a call to install_page required here?
 }
