@@ -110,7 +110,8 @@ struct thread
     struct thread *donated_to;          /* The thread this thread has donated to. */
     struct lock priority_list_lock;
 
-#ifdef USERPROG
+// Uncomment out the following line before merging!
+// #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     
