@@ -111,7 +111,7 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
   /* If load failed, quit. */
-  palloc_free_page (file_name);
+  //palloc_free_page (file_name);
 
   threadtable_acquire (thread_current ()->parent_table);
   struct threadtable_elem *e = find (thread_current ()->parent_table, thread_current ()->tid);
@@ -580,7 +580,7 @@ setup_stack (void **esp, const char *file_name)
   bool success = false;
 
   add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table, true);
-  struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE, true);
+  struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE, true, NULL, NULL);
   //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (frame != NULL) 
     {
@@ -589,7 +589,7 @@ setup_stack (void **esp, const char *file_name)
         *esp = PHYS_BASE;
       else
       {
-        free_frame (frame);
+        free_frame (frame->kPage);
         return false;
       }
     }

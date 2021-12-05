@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <hash.h>
 #include "filesys/off_t.h"
+#include "filesys/file.h"
 #include "threads/synch.h"
 
 enum page_status
@@ -30,6 +31,7 @@ struct page
   void *data;
   struct thread *t;
   bool writable;
+  struct inode *node;
 };
 
 struct page_table

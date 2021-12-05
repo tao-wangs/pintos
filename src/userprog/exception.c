@@ -162,11 +162,17 @@ page_fault (struct intr_frame *f)
 
   if (page != NULL)
   {
-    struct frame *frame = alloc_frame (page->addr, page->writable);
+    bool shared = false;
+    struct frame *frame = alloc_frame (page->addr, page->writable, page->node, &shared);
     if (!frame)
       PANIC ("failed to alloc frame");
     if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, page->writable))
       PANIC ("failed to set page");
+    if (shared)
+    {
+      page->status = FRAME;
+      return;
+    }
     switch (page->status)
     {
       case FRAME:
@@ -190,6 +196,7 @@ page_fault (struct intr_frame *f)
         if (bytes_read != fdata->read_bytes)
           PANIC ("FAILED TO READ SEGMENT!");
         memset (frame->kPage + fdata->read_bytes, 0, fdata->zero_bytes);
+        page->node = file_get_inode (fdata->file);
         free (fdata);
         page->data = NULL;
         //hex_dump (page->addr, page->addr, 4096, true);

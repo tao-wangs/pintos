@@ -44,14 +44,14 @@ frametable_free (void)
 
 // Protected by frame lock before calling
 struct frame *
-locate_frame (void *page) 
+locate_frame (void *page, struct inode *node) 
 {
   for (struct list_elem *e = list_begin (&table.frames);
        e != list_end (&table.frames);
        e = list_next (e))
   {
     struct frame *f = list_entry (e, struct frame, elem);
-    if (f->page == page) {
+    if (f->page == page && f->file_node == node) {
       return f;
     }
   }
@@ -59,19 +59,19 @@ locate_frame (void *page)
 }
 
 struct frame *
-alloc_frame (void *page, bool writable)
+alloc_frame (void *page, bool writable, struct inode *node, bool *shared)
 {
-  
   bool allocated = false;
   lock_acquire (&frame_lock);
 
   struct frame *f;
 
-  if (!writable) {
-    f = locate_frame (page);
+  if (!writable && node) {
+    f = locate_frame (page, node);
     if (f && !f->writable) {
       f->num_refs++;
       lock_release (&frame_lock);
+      *shared = true;
       return f;
     }
   }
@@ -86,6 +86,7 @@ alloc_frame (void *page, bool writable)
       f->page = page;
       f->writable = writable;
       f->num_refs++;
+      f->file_node = node;
       allocated = true;
       break;
     }
@@ -100,11 +101,20 @@ alloc_frame (void *page, bool writable)
 }
 
 void
-free_frame (void *page)
+free_frame (void *kpage)
 {
   lock_acquire (&frame_lock);
-  struct frame *f = locate_frame (page);
-
+  struct frame *f = NULL;
+  for (struct list_elem *e = list_begin (&table.frames);
+       e != list_end (&table.frames);
+       e = list_next (e))
+  {
+    struct frame *temp = list_entry (e, struct frame, elem);
+    if (temp->kPage == kpage) {
+      f = temp;
+      break;
+    }
+  }
   if (!f || f->num_refs--) {
     lock_release (&frame_lock);
     return;
