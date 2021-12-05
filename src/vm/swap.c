@@ -46,29 +46,32 @@ void free_swapslot(struct swapslot *slot){
   free(slot);
 }
 
-static struct swapslot
-*pop_free_slot(void){
-  //PANIC ("SWAPTABLE FREE3\n");
-  if (!list_empty(&table2.slots)) {
-    struct list_elem *e = list_pop_front(&table2.slots);
-    return list_entry(e, struct swapslot, elem);
+static struct swapslot *
+pop_free_slot(void)
+{
+  if (!list_empty (&table2.slots)) 
+  {
+    struct list_elem *e = list_pop_front (&table2.slots);
+    return list_entry (e, struct swapslot, elem);
   }
   return NULL;
 }
 
-void evict_to_swap(struct page *page){
-  //PANIC ("SWAPTABLE FREE4\n");
-  lock_acquire(&swap_lock);
-  struct swapslot *free_slot = pop_free_slot();
+void
+evict_to_swap(void *addr)
+{
+  struct page *page = locate_page (addr, thread_current ()->page_table);
+  lock_acquire (&swap_lock);
+  struct swapslot *free_slot = pop_free_slot ();
   if (free_slot == NULL){
-    PANIC("Swap is full!!!");
+    PANIC ("Swap is full!!!");
   } 
-  void* kpage = pagedir_get_page(thread_current()->pagedir, page->addr);
+  void* kpage = pagedir_get_page (thread_current ()->pagedir, addr);
   for (int i = 0; i < PGSIZE/BLOCK_SECTOR_SIZE; i++){
-    block_write(swap, free_slot->sector+i, kpage+(BLOCK_SECTOR_SIZE*i));
+    block_write (swap, free_slot->sector + i, kpage + (BLOCK_SECTOR_SIZE * i));
   }
-  page->data = free_slot;
   page->status = SWAP;
+  page->data = (void *) free_slot;
   lock_release(&swap_lock);
 }
 

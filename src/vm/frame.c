@@ -58,6 +58,7 @@ locate_frame (void *page, struct inode *node)
     if (f->page == page && f->file_node == node) {
       return f;
     }
+
   }
   return NULL;
 }
@@ -69,12 +70,16 @@ find_free_frame () {
        e = list_next (e))
   {
     f = list_entry (e, struct frame, elem);
-    if (!f->page) {
-      list_remove (e);
-      list_push_back (&table.frames, e);
+    if (!f->page)
       return f;
-    } else if (f->accessed)
+    else if (f->accessed)
       f->accessed = false;  
+    else
+    {
+      evict_to_swap (f->page);
+      f->page = NULL;
+      return f;
+    }
   }
   return NULL;
 }
@@ -98,6 +103,8 @@ alloc_frame (void *page)
   f = find_free_frame();
   
   if (f) {
+    list_remove (&f->elem);
+    list_push_back (&table.frames, &f->elem);
     f->page = page;
     f->writable = writable;
     f->num_refs++;

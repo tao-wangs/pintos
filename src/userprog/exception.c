@@ -196,6 +196,7 @@ page_fault (struct intr_frame *f)
         NOT_REACHED ();
       case SWAP:
         //Swap in
+        get_from_swap (page, frame->kPage); 
         break;
       case FILE_SYS:
       {
