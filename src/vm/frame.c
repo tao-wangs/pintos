@@ -69,10 +69,12 @@ find_free_frame () {
        e = list_next (e))
   {
     f = list_entry (e, struct frame, elem);
-    if (!f->page)
-    {
+    if (!f->page) {
+      list_remove (e);
+      list_push_back (&table.frames, e);
       return f;
-    }
+    } else if (f->accessed)
+      f->accessed = false;  
   }
   return NULL;
 }
