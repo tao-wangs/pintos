@@ -442,11 +442,17 @@ mmap (int fd, void *addr)
     return -1;
   }
 
+  struct file *new_fp = file_reopen (fp);
+
+  if (!new_fp) {
+    return -1;
+  }
+
   int offset = 0;
 
   lock_acquire (&filesystem_lock);
 
-  int remaining_length = file_length (fp);
+  int remaining_length = file_length (new_fp);
   
   if (!remaining_length) {
     lock_release (&filesystem_lock);
@@ -469,7 +475,7 @@ mmap (int fd, void *addr)
   }
 
   mapping->addr = addr;
-  mapping->fp = fp;
+  mapping->fp = new_fp;
   mapping->mid = thread_current ()->mid_incr++;
   mapping->page_cnt = 0;
 
@@ -493,15 +499,12 @@ mmap (int fd, void *addr)
 
     int read_bytes = remaining_length >= PGSIZE ? PGSIZE : remaining_length;
 
-    file_data->file = fp;
+    file_data->file = new_fp;
     file_data->ofs = offset;
     file_data->read_bytes = read_bytes;
     file_data->zero_bytes = PGSIZE - read_bytes;
 
     add_page ((uint8_t *) addr + offset, file_data, FILE_SYS, thread_current ()->page_table, true);
-
-   //new
-    mapping->read_bytes = file_data->read_bytes;
 
     remaining_length -= file_data->read_bytes;
     offset += file_data->read_bytes;
@@ -526,10 +529,9 @@ munmap (mapid_t mapid_t)
       for (int i = mmap->page_cnt; i > 0; i--) 
       { 
         if (pagedir_is_dirty (thread_current ()->pagedir, (uint8_t *) mmap->addr + PGSIZE * (i-1))) {
-          int ofs = (i-1) * PGSIZE;
-          lock_acquire (&filesystem_lock);
-          file_write_at (mmap->fp, (uint8_t *) mmap->addr + PGSIZE * (i-1), PGSIZE, ofs);
-          hex_dump (mmap->addr + (i-1) * PGSIZE, mmap->addr + (i-1) * PGSIZE, PGSIZE, true);
+          lock_acquire (&filesystem_lock); //try without pgsize * (i-1)
+          file_write_at (mmap->fp, (uint8_t *) mmap->addr + PGSIZE * (i-1), PGSIZE, (i-1) * PGSIZE);
+          //hex_dump (mmap->addr + (i-1) * PGSIZE, mmap->addr + (i-1) * PGSIZE, PGSIZE, true);
           lock_release (&filesystem_lock);
         }
         remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
