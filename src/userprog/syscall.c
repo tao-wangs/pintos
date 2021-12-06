@@ -488,7 +488,7 @@ syscall_handler (struct intr_frame *f)
 {
   uint32_t intr =  get_int ((uint8_t *) f->esp);
   
-  /* You will need to arrange another way, such as saving esp into struct thread 
+   /* You will need to arrange another way, such as saving esp into struct thread 
      on the initial transition from user to kernel mode.
      This is for stack growth in the case in which we page fault, as reading esp 
      out of the struct intr_frame passed to page_fault() would yield an undefined value,
