@@ -454,7 +454,8 @@ mmap (int fd, void *addr)
 
   //Ensure that mapping will not overlap existing mappings 
   for (int i = 0; i <= remaining_length / PGSIZE; i++) {
-    if (locate_page ((uint8_t *) addr + i * PGSIZE, thread_current ()->page_table) != NULL) {
+    if (locate_page ((uint8_t *) addr + (i * PGSIZE), thread_current ()->page_table) != NULL) {
+      lock_release (&filesystem_lock);
       return -1;
     }
   }
