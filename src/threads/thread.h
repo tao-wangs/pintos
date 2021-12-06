@@ -128,7 +128,8 @@ struct thread
 
 #endif
 
-
+    void *esp;                          /* Stack pointer */  
+                            
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

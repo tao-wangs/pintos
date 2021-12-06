@@ -223,7 +223,7 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
-
+
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -594,6 +594,12 @@ setup_stack (void **esp, const char *file_name)
       }
     }
 
+
+  // The first stack page need not be allocated lazily. You can allocate and initialize it 
+  // with the command line arguments at load time, with no need to wait for it to be faulted in.
+  
+  // You will need to be able to obtain the current value of the user program's stack pointer.
+  
   uint32_t argc = 1;
   uint32_t i = 0;
 
