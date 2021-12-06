@@ -522,8 +522,8 @@ munmap (mapid_t mapid_t)
     if (mmap->mid == mapid_t) {
       for (int i = mmap->page_cnt; i > 0; i--) 
       { 
-        if (pagedir_is_dirty (thread_current ()->pagedir, mmap->addr)) {
-          struct page *page = locate_page (mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
+        struct page *page = locate_page (mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
+        if (pagedir_is_dirty (thread_current ()->pagedir, page->addr)) {
           struct file_data *file_data = (struct file_data *) page->data;
           file_write_at (mmap->fp, mmap->addr, file_data->read_bytes, file_data->ofs); 
         }
