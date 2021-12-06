@@ -16,6 +16,7 @@
 #include "threads/palloc.h"
 #include "filesys/file.h"
 
+extern struct lock filesystem_lock;
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -178,11 +179,19 @@ page_fault (struct intr_frame *f)
 
   if (page != NULL)
   {
-    struct frame *frame = alloc_frame (page->addr);
+    if (page->status == FRAME)
+      exit (-1);
+    bool shared = false;
+    struct frame *frame = alloc_frame (page->addr, page->writable, page->node, &shared);
     if (!frame)
       PANIC ("failed to alloc frame");
-    if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, true))
+    if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, page->writable))
       PANIC ("failed to set page");
+    if (shared)
+    {
+      page->status = FRAME;
+      return;
+    }
     switch (page->status)
     {
       case FRAME:
@@ -194,11 +203,19 @@ page_fault (struct intr_frame *f)
       {
         //Load from file
         struct file_data *fdata = (struct file_data *) page->data;
+        bool pre_owned = filesystem_lock.holder == thread_current ();
+        if (!pre_owned) {
+          lock_acquire (&filesystem_lock);
+        }
         file_seek (fdata->file, fdata->ofs);
         int bytes_read = file_read (fdata->file, frame->kPage, fdata->read_bytes);
+        if (!pre_owned) {
+          lock_release (&filesystem_lock);
+        }
         if (bytes_read != fdata->read_bytes)
           PANIC ("FAILED TO READ SEGMENT!");
         memset (frame->kPage + fdata->read_bytes, 0, fdata->zero_bytes);
+        page->node = file_get_inode (fdata->file);
         free (fdata);
         page->data = NULL;
         //hex_dump (page->addr, page->addr, 4096, true);
@@ -209,7 +226,7 @@ page_fault (struct intr_frame *f)
         memset (page->addr, 0, PGSIZE);
         break;
     }
-    page->status = FRAME;
+    page->status = FRAME; 
   } else {
     if (user)
     {

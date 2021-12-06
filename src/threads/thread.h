@@ -123,9 +123,9 @@ struct thread
     struct file *file;                  /* File kept open */
     struct page_table *page_table;
 
-    struct list mappings;
-    int mid_incr;
-    
+    struct list mappings;               /* List of file to VM mappings */
+    int mid_incr;                /* Mapping id incrementer */
+
 #endif
 
     void *esp;                          /* Stack pointer */  

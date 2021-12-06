@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <hash.h>
 #include "filesys/off_t.h"
+#include "filesys/file.h"
 #include "threads/synch.h"
 
 enum page_status
@@ -20,7 +21,6 @@ struct file_data
   off_t ofs;
   uint32_t read_bytes;
   uint32_t zero_bytes;
-  bool writable;
 };
 
 struct page
@@ -30,6 +30,8 @@ struct page
   enum page_status status;
   void *data;
   struct thread *t;
+  bool writable;
+  struct inode *node;
 };
 
 struct page_table
@@ -38,20 +40,11 @@ struct page_table
   struct lock lock;
 };
 
-/*static unsigned
-page_hash (const struct hash_elem *e, void *aux UNUSED);
-
-static bool
-page_less (const struct hash_elem *a,
-           const struct hash_elem *b,
-           void *aux UNUSED);
-*/
-
 struct page_table *pagetable_init (void);
 
 struct page *locate_page (void *addr, struct page_table *page_table);
 
-void add_page (void *addr, void *data, enum page_status status, struct page_table *page_table);
+void add_page (void *addr, void *data, enum page_status status, struct page_table *page_table, bool writable);
 
 void remove_page (void *addr, struct page_table *page_table);
 
