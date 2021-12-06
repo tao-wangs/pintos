@@ -162,6 +162,8 @@ page_fault (struct intr_frame *f)
 
   if (page != NULL)
   {
+    if (page->status == FRAME)
+      exit (-1);
     bool shared = false;
     struct frame *frame = alloc_frame (page->addr, page->writable, page->node, &shared);
     if (!frame)
