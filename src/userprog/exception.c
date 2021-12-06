@@ -302,7 +302,7 @@ grow_the_stack (void *fault_addr) {
       thread. */
    // The add_page function will handle the rounding down of the stack pointer
    // for us, so we do not need to explicitly do it.
-   add_page(fault_addr, NULL, ZERO, current_thread->page_table);
+   add_page(fault_addr, NULL, ZERO, current_thread->page_table, true);
    
 
    /* We use this to allocate a new frame, and pass in the fault_addr as a 
