@@ -110,8 +110,7 @@ struct thread
     struct thread *donated_to;          /* The thread this thread has donated to. */
     struct lock priority_list_lock;
 
-// Uncomment out the following line before merging!
-// #ifdef USERPROG
+#ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     
@@ -123,6 +122,10 @@ struct thread
     int fd_incr;                 /* File descriptor incrementer */
     struct file *file;                  /* File kept open */
     struct page_table *page_table;
+
+    struct list mappings;
+    int mid_incr;
+    
 #endif
 
     void *esp;                          /* Stack pointer */  

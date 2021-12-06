@@ -277,34 +277,33 @@ grow_the_stack (void *fault_addr) {
       the user pool. We also use PAL_ZERO as a parameter so that it zeroes
       the remainding bytes of the allocated pages before it is returned, so
       that the contents of the page is not unpredictable. */
-   struct page *new_page = palloc_get_page(PAL_USER | PAL_ZERO);
+   // struct page *new_page = palloc_get_page(PAL_USER | PAL_ZERO);
 
    /* We are using this to add our new page to the page table of the current
       thread. */
    // The add_page function will handle the rounding down of the stack pointer
    // for us, so we do not need to explicitly do it.
-   add_page(current_thread->esp, NULL, FRAME, current_thread->page_table);
+   add_page(fault_addr, NULL, ZERO, current_thread->page_table);
    
 
    /* We use this to allocate a new frame, and pass in the fault_addr as a 
-      parameter to this function. */
-   struct frame *new_frame = alloc_frame(fault_addr);
+      parameter to this function. 
+   struct frame *new_frame = alloc_frame(rounded_fault_addr);
    if (new_frame == NULL) { 
       PANIC("Unable to allocate a new frame to extend the stack.");
-   }
+   } */
       
    /* We use pagedir_set_page to add to the pagedir of the current thread a mapping
       from the stack pointer to the new_frame, which we identify by using its kPage
       field. We also pass in true as a parameter so that the page mapped is 
-      read / write. */
+      read / write. 
    bool successful_memory_allocation = pagedir_set_page(current_thread->pagedir, 
-                     current_thread->esp, new_frame->kPage, true);
+                     rounded_fault_addr, new_frame->kPage, true);
    
    /* This returns false on failiure, in which case additional memory required for the 
-      page table cannot be obtained. */
+      page table cannot be obtained. 
    if (!successful_memory_allocation) {
       free_frame (new_frame);
-   }
+   } */
 
-   // Is a call to install_page required here?
 }
