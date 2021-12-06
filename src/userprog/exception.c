@@ -169,7 +169,7 @@ page_fault (struct intr_frame *f)
    if (user) {
       thread_current ()->esp = f->esp;
    }
-   
+
    if (is_a_stack_access(write, fault_addr)) {
       grow_the_stack(fault_addr);
    }
@@ -213,7 +213,7 @@ page_fault (struct intr_frame *f)
   } else {
     if (user)
     {
-      //printf ("User page fault!\n");
+      // printf ("User page fault!\n");
       exit (-1);
     } else
     {
@@ -248,7 +248,7 @@ page_fault (struct intr_frame *f)
 
 bool
 is_a_stack_access (bool write, void *fault_addr) {
-   return (fault_addr < PHYS_BASE && (fault_addr >= (thread_current ()->esp - 32)) && write);
+   return (fault_addr < PHYS_BASE && (fault_addr >= (thread_current ()->esp - 32)));
 }
 
 void
@@ -267,13 +267,13 @@ grow_the_stack (void *fault_addr) {
       we have imposed. Here we have used the rounded address, as once we have added the page 
       to the stack, we will be looking at the page boundary itself as we can only add whole
       pages. */
-    if (PHYS_BASE - rounded_fault_addr >= MAX_STACK_SIZE) {
-       exit(-1);
-    }
+    //if (PHYS_BASE - rounded_fault_addr >= MAX_STACK_SIZE) {
+    //   exit(-1);
+    //}
    
-   //if ((uint8_t) (current_thread + PGSIZE) - (uint8_t) current_thread->esp >= MAX_STACK_SIZE) {
-   //   exit(-1);
-   //}
+   if ((uint32_t) (current_thread + PGSIZE) - (uint32_t) current_thread->esp >= MAX_STACK_SIZE) {
+      exit(-1);
+   }
 
    /* Using palloc_get_page to obtain and return an extra page so that we 
       can extend the stack of the current thread.
