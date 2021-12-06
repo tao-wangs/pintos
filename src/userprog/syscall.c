@@ -500,11 +500,14 @@ mmap (int fd, void *addr)
 
     add_page ((uint8_t *) addr + offset, file_data, FILE_SYS, thread_current ()->page_table, true);
 
+   //new
+    mapping->read_bytes = file_data->read_bytes;
+
     remaining_length -= file_data->read_bytes;
     offset += file_data->read_bytes;
     mapping->page_cnt++;
   }
-  
+
   //printf("Outside while loop\n");
   
   return mapping->mid;
@@ -522,10 +525,12 @@ munmap (mapid_t mapid_t)
     if (mmap->mid == mapid_t) {
       for (int i = mmap->page_cnt; i > 0; i--) 
       { 
-        struct page *page = locate_page (mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
-        if (pagedir_is_dirty (thread_current ()->pagedir, page->addr)) {
-          struct file_data *file_data = (struct file_data *) page->data;
-          file_write_at (mmap->fp, mmap->addr, file_data->read_bytes, file_data->ofs); 
+        if (pagedir_is_dirty (thread_current ()->page_table, (uint8_t *) mmap->addr + PGSIZE * (i-1))) {
+          int read_bytes = (i == mmap->page_cnt) ? mmap->read_bytes : PGSIZE;
+          int ofs = (i-1) * PGSIZE;
+          lock_acquire (&filesystem_lock);
+          file_write_at (mmap->fp, mmap->addr, read_bytes, ofs);
+          lock_release (&filesystem_lock);
         }
         remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
       }
