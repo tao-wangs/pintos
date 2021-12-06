@@ -158,8 +158,6 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-   void *stack_pointer = thread_current ()->esp;
-
     /* The PUSH and PUSHA instructions are not the only instructions
       that can trigger user stack growth. */     
   /* if (fault_addr < PHYS_BASE && fault_addr >= stack_pointer - 32 && write) {
