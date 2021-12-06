@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "userprog/pagedir.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -520,7 +521,12 @@ munmap (mapid_t mapid_t)
     struct m_map *mmap = list_entry (e, struct m_map, elem);
     if (mmap->mid == mapid_t) {
       for (int i = mmap->page_cnt; i > 0; i--) 
-      {
+      { 
+        if (pagedir_is_dirty (thread_current ()->pagedir, mmap->addr)) {
+          struct page *page = locate_page (mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
+          struct file_data *file_data = (struct file_data *) page->data;
+          file_write_at (mmap->fp, mmap->addr, file_data->read_bytes, file_data->ofs); 
+        }
         remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
       }
       list_remove (&mmap->elem);
