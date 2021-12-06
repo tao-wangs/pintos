@@ -525,6 +525,9 @@ munmap (mapid_t mapid_t)
     if (mmap->mid == mapid_t) {
       for (int i = mmap->page_cnt; i > 0; i--) 
       { 
+        if (!pagedir_get_page (thread_current ()->page_table, (uint8_t *) mmap->addr + PGSIZE * (i-1))) {
+          goto remove;
+        }
         if (pagedir_is_dirty (thread_current ()->page_table, (uint8_t *) mmap->addr + PGSIZE * (i-1))) {
           int read_bytes = (i == mmap->page_cnt) ? mmap->read_bytes : PGSIZE;
           int ofs = (i-1) * PGSIZE;
@@ -532,6 +535,7 @@ munmap (mapid_t mapid_t)
           file_write_at (mmap->fp, mmap->addr, read_bytes, ofs);
           lock_release (&filesystem_lock);
         }
+        remove:
         remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
       }
       list_remove (&mmap->elem);
