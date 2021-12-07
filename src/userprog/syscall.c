@@ -39,7 +39,8 @@ static void close (int fd);
 
 static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapid_t);
-static struct m_map *find_mmap (mapid_t mapid_t);
+static struct m_map *find_mmap (mapid_t mapid);
+static void munmap_all (void);
 
 static void *first_arg (struct intr_frame *f);
 static void *second_arg (struct intr_frame *f);
@@ -150,16 +151,10 @@ exit (int status)
   struct thread *cur = thread_current (); 
 
   printf ("%s: exit(%d)\n", cur->name, status);  
+  
   childExit (cur->parent_table, cur->tid, status);
 
-  struct list_elem *e = list_begin (&cur->mappings);
-  
-  while (e != list_end (&cur->mappings)) {
-    struct list_elem *next = list_next (e);
-    struct m_map *mmap = list_entry (e, struct m_map, elem);
-    munmap (mmap->mid);
-    e = next;
-  }
+  munmap_all ();
   
   thread_exit ();
 }
@@ -444,6 +439,7 @@ mmap (int fd, void *addr)
     return -1;
   }
 
+  /* Obtain new independent reference to the file */
   struct file *new_fp = file_reopen (fp);
 
   if (!new_fp) {
@@ -477,7 +473,7 @@ mmap (int fd, void *addr)
     return -1; 
   }
 
-  mapping->mid = thread_current ()->mid_incr++;
+  mapping->mapid = thread_current ()->mapid_incr++;
   
   lock_release (&filesystem_lock);
 
@@ -510,7 +506,7 @@ mmap (int fd, void *addr)
     offset += file_data->read_bytes;
   }
   
-  return mapping->mid;
+  return mapping->mapid;
 }
 
 /* Unmaps file fd from process' virtual memory starting at address addr. */
@@ -546,13 +542,27 @@ find_mmap (mapid_t mapid)
 
   for (e = list_begin (mappings); e != list_end (mappings); e = list_next (e)) {
     struct m_map *mmap = list_entry (e, struct m_map, elem);
-    if (mmap->mid == mapid) {
+    if (mmap->mapid == mapid) {
       return mmap;
     }
   }
 
   return NULL;
 } 
+
+/* Unmaps all user's process  */
+static void
+munmap_all (void) {
+  struct thread *cur = thread_current ();
+  struct list_elem *e = list_begin (&cur->mappings);
+  
+  while (e != list_end (&cur->mappings)) {
+    struct list_elem *next = list_next (e);
+    struct m_map *mmap = list_entry (e, struct m_map, elem);
+    munmap (mmap->mapid);
+    e = next;
+  }
+}
 
 /* Initialises system call handler and file system lock. */
 void
