@@ -1,12 +1,15 @@
 #ifndef VM_SWAP_H
 #define VM_SWAP_H
 #include <list.h>
-#include "page.h"
+#include "vm/page.h"
+#include "vm/frame.h"
 #include "devices/block.h"
 
 struct swapslot{
   struct list_elem elem;
   block_sector_t sector;
+  struct list page_list;
+  int num_refs;
 };
 
 struct swap {
@@ -16,7 +19,7 @@ struct swap {
 void swaptable_init(void);
 void swaptable_free(void);
 void free_swapslot(struct swapslot *slot);
-void evict_to_swap(void *addr);
-void get_from_swap(struct page *page, void* kpage);
+struct swapslot * evict_to_swap(void *addr);
+void get_from_swap(struct page *page, struct frame *frame);
 
 #endif /* vm/swap.h */

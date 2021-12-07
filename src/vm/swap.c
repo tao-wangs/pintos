@@ -27,6 +27,7 @@ void swaptable_init(void){
     	PANIC("Failed to allocate swapslot\n");
     }
     slot->sector = i; //might have to be offset by 1
+    list_init (&slot->page_list);
     list_push_back(&table2.slots, &slot->elem);
   }
 }
@@ -57,7 +58,7 @@ pop_free_slot(void)
   return NULL;
 }
 
-void
+struct swapslot *
 evict_to_swap(void *addr)
 {
   struct page *page = locate_page (addr, thread_current ()->page_table);
@@ -73,18 +74,35 @@ evict_to_swap(void *addr)
   page->status = SWAP;
   page->data = (void *) free_slot;
   lock_release(&swap_lock);
+  return free_slot;
 }
 
-void get_from_swap(struct page *page, void *kpage){
+void get_from_swap(struct page *page, struct frame *frame){
   //PANIC ("SWAPTABLE FREE5\n");
   lock_acquire(&swap_lock);
   ASSERT(page->status == SWAP);
-  ASSERT(kpage != NULL);
+  ASSERT(frame != NULL);
+  //printf ("getting page %p into frame %d\n", page->addr, frame->fid);
   struct swapslot *free_slot = (struct swapslot *) page->data;
   list_push_back(&table2.slots, &free_slot->elem);
   for (int i = 0; i< PGSIZE/BLOCK_SECTOR_SIZE; i++){
-    block_read(swap, free_slot->sector+i, kpage+(BLOCK_SECTOR_SIZE*i));
+    block_read(swap, free_slot->sector+i, frame->kPage+(BLOCK_SECTOR_SIZE*i));
   }
+  struct list_elem *e = list_begin (&free_slot->page_list);
+  while (e != list_end (&free_slot->page_list))
+  {
+    struct list_elem *next = list_next (e);
+    list_remove (e);
+    struct page *new_page = list_entry (e, struct page, swap_elem);
+    if (new_page == page)
+    {
+      e = next;
+      continue;
+    }
+    list_push_back (&frame->page_list, &new_page->page_elem);
+    e = next;
+  }
+  frame->num_refs = free_slot->num_refs;
   page->data = NULL;
   page->status = FRAME;
   lock_release(&swap_lock);

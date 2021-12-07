@@ -578,12 +578,12 @@ static bool
 setup_stack (void **esp, const char *file_name) 
 {
   bool success = false;
-
-  add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table, true);
-  struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE, true, NULL, NULL);
+  void* page_addr = (uint8_t *) PHYS_BASE - PGSIZE;
+  add_page (page_addr, NULL, FRAME, thread_current()->page_table, true);
+  struct frame *frame = alloc_frame (locate_page(page_addr, thread_current()->page_table), true, NULL, NULL);
   if (frame != NULL) 
     { 
-      success = install_page ((uint8_t *) PHYS_BASE - PGSIZE, frame->kPage, true);
+      success = install_page (page_addr, frame->kPage, true);
       if (success)
         *esp = PHYS_BASE;
       else

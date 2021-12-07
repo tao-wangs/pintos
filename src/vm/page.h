@@ -32,6 +32,8 @@ struct page
   struct thread *t;
   bool writable;
   struct inode *node;
+  struct list_elem page_elem;
+  struct list_elem swap_elem;
 };
 
 struct page_table
