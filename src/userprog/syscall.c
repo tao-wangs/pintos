@@ -507,7 +507,8 @@ mmap (int fd, void *addr)
   return mapping->mapid;
 }
 
-/* Unmaps file fd from process' virtual memory starting at address addr. */
+/* Unmaps file fd from process' virtual memory starting at address addr. 
+   Frees mapping from user's list of mappings.  */
 static void 
 munmap (mapid_t mapid) 
 {

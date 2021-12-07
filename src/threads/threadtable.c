@@ -62,10 +62,8 @@ threadtable_destroy (struct threadtable *table)
   free (table);
 }
 
-/*
-Gets the threadtable_elem * associated with the given tid from the hashtable.
-Returns NULL if missing.
-*/
+/* Gets the threadtable_elem * associated with the given tid from the hashtable.
+Returns NULL if missing. */
 struct threadtable_elem *
 find (struct threadtable *table, int tid)
 {
@@ -77,9 +75,7 @@ find (struct threadtable *table, int tid)
   return hash_entry(e, struct threadtable_elem, elem);
 }
 
-/*
-Determines if the thread child_tid is a child of the thread parent_tid.
-*/
+/* Determines if the thread child_tid is a child of the thread parent_tid. */
 bool
 isChild (struct threadtable *table, int parent_tid, int child_tid)
 {
@@ -89,10 +85,8 @@ isChild (struct threadtable *table, int parent_tid, int child_tid)
   return e != NULL && e->parent_tid == parent_tid;
 }
 
-/*
-Adds a new thread to the threadtable.
-Initialises its members to default values.
-*/
+/* Adds a new thread to the threadtable.
+   Initialises its members to default values. */
 struct threadtable_elem*
 addThread (struct threadtable *table, int parent_tid, int child_tid)
 {
@@ -121,10 +115,8 @@ addThread (struct threadtable *table, int parent_tid, int child_tid)
   return elem;
 }
 
-/*
-Reduces refs by 1.
-If it becomes zero, the elem is destroyed.
-*/
+/* Reduces refs by 1.
+   If it becomes zero, the elem is destroyed. */
 static void
 decrRefs (struct threadtable *table, struct threadtable_elem *elem)
 {
@@ -148,10 +140,8 @@ decrTableRefs (struct threadtable *table)
   return true;
 }
 
-/*
-Called for each child when the parent exits.
-Decrements refs for the elem associated with the child.
-*/
+/* Called for each child when the parent exits.
+   Decrements refs for the elem associated with the child. */
 bool
 parentExit (struct threadtable *table, int child_tid)
 {
@@ -167,11 +157,9 @@ parentExit (struct threadtable *table, int child_tid)
   return true;
 }
 
-/*
-Called when a thread exits.
-Sets the exit status and ups the semaphore.
-Wait should not block after this has been called.
-*/
+/* Called when a thread exits.
+   Sets the exit status and ups the semaphore.
+   Wait should not block after this has been called. */
 bool
 childExit (struct threadtable *table, int tid, int status)
 {

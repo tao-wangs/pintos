@@ -114,20 +114,20 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     
-    struct list children;               /* Child processes */
-    struct threadtable *table;
-    struct threadtable *parent_table;
+    struct list children;               /* Child processes. */
+    struct threadtable *table;          /* Thread table. */
+    struct threadtable *parent_table;   /* Parent's thread table. */
 
-    struct list file_list;              /* List of open files */
-    int fd_incr;                        /* File descriptor incrementer */
-    struct file *file;                  /* File kept open */
+    struct list file_list;              /* List of open files. */
+    int fd_incr;                        /* File descriptor incrementer. */
+    struct file *file;                  /* File kept open. */
     struct page_table *page_table;
 
-    struct list mappings;               /* List of file to VM mappings */
-    int mapid_incr;                     /* Mapping id incrementer */
+    struct list mappings;               /* List of file to VM mappings. */
+    int mapid_incr;                     /* Mapping id incrementer. */
 #endif
 
-    void *esp;                          /* Stack pointer */  
+    void *esp;                          /* Stack pointer. */  
                             
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
