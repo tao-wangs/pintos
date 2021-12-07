@@ -550,7 +550,7 @@ find_mmap (mapid_t mapid)
   return NULL;
 } 
 
-/* Unmaps all user's process  */
+/* Unmaps all files for current user process  */
 static void
 munmap_all (void) {
   struct thread *cur = thread_current ();
