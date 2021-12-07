@@ -426,9 +426,7 @@ close (int fd)
 static mapid_t 
 mmap (int fd, void *addr)
 { 
-  /* Fails if: - fd 0 and 1 because cannot be mapped
-               - address is 0 because cannot be mapped
-               - address is not page aligned */             
+  /* Fails if fd 0 or fd 1 or address 0 because cannot they be mapped, address is not page aligned */             
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO || !addr || pg_ofs(addr) != 0) {
     return -1; 
   }
