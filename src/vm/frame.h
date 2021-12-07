@@ -15,6 +15,7 @@ struct frame {
   int num_refs;
   struct inode *file_node;
   struct list page_list;
+  struct lock lock;
 };
 
 struct frametable {

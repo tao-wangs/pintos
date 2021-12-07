@@ -534,7 +534,7 @@ munmap (mapid_t mapid_t)
           //hex_dump (mmap->addr + (i-1) * PGSIZE, mmap->addr + (i-1) * PGSIZE, PGSIZE, true);
           lock_release (&filesystem_lock);
         }
-        remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
+        //remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
       }
       list_remove (&mmap->elem);
       free (mmap);

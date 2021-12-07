@@ -18,7 +18,7 @@ struct swap {
 
 void swaptable_init(void);
 void swaptable_free(void);
-void free_swapslot(struct swapslot *slot);
+void free_swapslot(struct swapslot *slot, struct page *page);
 struct swapslot * evict_to_swap(void *addr, void *kpage);
 void get_from_swap(struct page *page, struct frame *frame);
 

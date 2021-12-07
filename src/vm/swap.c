@@ -33,7 +33,6 @@ void swaptable_init(void){
 }
 
 void swaptable_free(void){
-  //PANIC ("SWAPTABLE FREE\n");
   struct list_elem *e = list_begin(&table2.slots);
   while (e != list_end(&table2.slots)){
     struct list_elem *next = list_next(e);
@@ -42,9 +41,16 @@ void swaptable_free(void){
   }
 }
 
-void free_swapslot(struct swapslot *slot){
-  //PANIC ("SWAPTABLE FREE2\n");
-  free(slot);
+void free_swapslot(struct swapslot *slot, struct page *page){
+  lock_acquire (&swap_lock);
+  list_remove (&page->swap_elem); 
+  if (--slot->num_refs)
+  {
+    lock_release (&swap_lock);
+    return;
+  }
+  list_push_back (&table2.slots, &slot->elem);
+  lock_release (&swap_lock);
 }
 
 static struct swapslot *

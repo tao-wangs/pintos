@@ -31,7 +31,8 @@ frametable_init (void)
     f->page = NULL;
     f->accessed = false;
     f->fid = j;
-    list_init(&f->page_list);
+    list_init (&f->page_list);
+    lock_init (&f->lock);
     list_push_back (&table.frames, &f->elem);
     j++;
   }
@@ -59,10 +60,11 @@ locate_frame (void *page, struct inode *node)
        e = list_next (e))
   {
     struct frame *f = list_entry (e, struct frame, elem);
+    lock_acquire (&f->lock);
     if (f->page == page && f->file_node == node) {
       return f;
     }
-
+    lock_release (&f->lock);
   }
   return NULL;
 }
@@ -75,13 +77,13 @@ find_free_frame ()
        e = list_next (e))
   {
     struct frame *f = list_entry (e, struct frame, elem);
+    lock_acquire (&f->lock);
     if (!f->page)
       return f;
     else if (f->accessed)
       f->accessed = false;  
     else
     {
-      //printf ("evicting page %p from frame %d\n", f->page, f->fid);
       struct swapslot * slot = evict_to_swap (f->page, f->kPage);
       f->page = NULL;
       slot->num_refs = f->num_refs;
@@ -100,6 +102,7 @@ find_free_frame ()
       }
       return f;
     }
+    lock_release (&f->lock);
   }
   return NULL;
 }
@@ -107,7 +110,6 @@ find_free_frame ()
 struct frame *
 alloc_frame (struct page *page, bool writable, struct inode *node, bool *shared)
 {
-  lock_acquire (&frame_lock);
   struct frame *f;
 
   if (!writable && node) {
@@ -115,10 +117,11 @@ alloc_frame (struct page *page, bool writable, struct inode *node, bool *shared)
     if (f && !f->writable) {
       f->num_refs++;
       list_push_back (&f->page_list, &page->page_elem);
-      lock_release (&frame_lock);
+      lock_release (&f->lock);
       *shared = true;
       return f;
     }
+    lock_release (&f->lock);
   }
 
   f = find_free_frame();
@@ -131,7 +134,7 @@ alloc_frame (struct page *page, bool writable, struct inode *node, bool *shared)
     f->writable = writable;
     f->num_refs++;
     f->file_node = node;
-    lock_release (&frame_lock);
+    lock_release (&f->lock);
     return f;
   }
   PANIC ("alloc_frame: no free frames!"); 
@@ -140,46 +143,48 @@ alloc_frame (struct page *page, bool writable, struct inode *node, bool *shared)
 void
 free_frame (void *kpage)
 {
-  lock_acquire (&frame_lock);
   struct frame *f = NULL;
   for (struct list_elem *e = list_begin (&table.frames);
        e != list_end (&table.frames);
        e = list_next (e))
   {
     struct frame *temp = list_entry (e, struct frame, elem);
+    lock_acquire (&temp->lock);
     if (temp->kPage == kpage) {
       f = temp;
       break;
     }
+    lock_release (&temp->lock);
   }
 
   if (!f) {
-    lock_release (&frame_lock);
     return;
   }
 
-  for (struct list_elem *e = list_begin (&f->page_list);
-       e != list_end (&f->page_list);
-       e = list_next (e))
+  struct list_elem *e = list_begin (&f->page_list);
+  while (e != list_end (&f->page_list))
   {
+    struct list_elem *next = list_next (e);
     struct page *page = list_entry(e, struct page, page_elem);
     if (page->t == thread_current ())
     {
       list_remove (&page->page_elem);
       break;
     }
+    e = next;
   }
 
-  if (f->num_refs--){
-    lock_release (&frame_lock);
+  if (--f->num_refs){
+    lock_release (&f->lock);
     return;
   }
 
   f->page = NULL;
+  f->file_node = NULL;
   list_remove (&f->elem);
   list_push_front (&table.frames, &f->elem);
   
-  lock_release (&frame_lock);
+  lock_release (&f->lock);
 }
 
 void size () {

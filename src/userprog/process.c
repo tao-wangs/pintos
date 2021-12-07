@@ -192,6 +192,7 @@ process_exit (void)
   lock_release (&filesystem_lock);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  pagetable_destroy (cur->page_table);
   pd = cur->pagedir;
   if (pd != NULL) 
     {
