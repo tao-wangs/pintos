@@ -3,11 +3,11 @@
 
 #include <list.h> 
 
-/* Mapping from file descriptors to its file */
+/* Mapping from file descriptors to its file. */
 struct fd_map {
-  int fd;                                 /* File descriptor */
-  struct file *fp;                        /* File pointer matching fd */
-  struct list_elem elem;                  /* List elem */
+  int fd;                                 /* File descriptor. */
+  struct file *fp;                        /* File pointer matching fd. */
+  struct list_elem elem;                  /* List elem. */
 };
 
 int get_user (const uint8_t *uaddr);

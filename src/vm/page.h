@@ -7,6 +7,7 @@
 #include "filesys/file.h"
 #include "threads/synch.h"
 
+/* Information about what is in the page. */
 enum page_status
 {
    FRAME, 
@@ -15,25 +16,28 @@ enum page_status
    ZERO
 };
 
+/* File data. */
 struct file_data
 {
-  struct file *file;
-  off_t ofs;
-  uint32_t read_bytes;
-  uint32_t zero_bytes;
+  struct file *file;         /* File pointer. */
+  off_t ofs;                 /* Offset.       */
+  uint32_t read_bytes;       /* Number of read_bytes. */
+  uint32_t zero_bytes;       /* Number of zero_bytes (PGSIZE - read_bytes). */
 };
 
+/* Supplemental page, per thread. */
 struct page
 {
-  struct hash_elem elem;
-  void *addr;
-  enum page_status status;
-  void *data;
-  struct thread *t;
-  bool writable;
-  struct inode *node;
+  struct hash_elem elem;     /* Hash elem. */ 
+  void *addr;                /* Page pointer. */
+  enum page_status status;   /* Page status. */
+  void *data;                /* Data depending on page_status. */
+  struct thread *t;          /* Thread owning the supplemental page table. */
+  bool writable;             /* Writable. */
+  struct inode *node;        /* Inode. */
 };
 
+/* Supplemental page table, synchronised with a lock. */
 struct page_table
 {
   struct hash table;

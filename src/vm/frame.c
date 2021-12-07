@@ -5,11 +5,12 @@
 #include "threads/synch.h"
 #include <stdio.h>
 
-struct frametable table;
-struct lock frame_lock;
+struct frametable table;    /* Frame table. */
+struct lock frame_lock;     /* Frame lock. */
 
 extern uint32_t init_ram_pages;
 
+/* Initialises frame table, frame lock and frames in user pool. */
 void 
 frametable_init (void)
 {
@@ -18,7 +19,6 @@ frametable_init (void)
   printf ("init_ram_pages: %d\n", init_ram_pages);
   for (int i = 0; i < 367; ++i)
   {
-    //printf ("Initialising frame %d\n", i);
     struct frame *f = malloc (sizeof (struct frame));
     if (!f)
       PANIC ("Failed to malloc frame");
@@ -30,6 +30,7 @@ frametable_init (void)
   }
 }
 
+/* Frees frame table. */
 void
 frametable_free (void)
 {
@@ -42,7 +43,8 @@ frametable_free (void)
   } 
 }
 
-// Protected by frame lock before calling
+/* Locates frame with contains the page.  
+   Protected by frame lock before calling. */
 struct frame *
 locate_frame (void *page, struct inode *node) 
 {
@@ -58,6 +60,7 @@ locate_frame (void *page, struct inode *node)
   return NULL;
 }
 
+/* Allocates a page to a frame. */
 struct frame *
 alloc_frame (void *page, bool writable, struct inode *node, bool *shared)
 {
@@ -100,6 +103,7 @@ alloc_frame (void *page, bool writable, struct inode *node, bool *shared)
   return f;
 }
 
+/* Frees the frame in the user pool with kernel address kpage */
 void
 free_frame (void *kpage)
 {
@@ -121,6 +125,7 @@ free_frame (void *kpage)
   }
 
   f->page = NULL;
+  
   list_remove (&f->elem);
   list_push_front (&table.frames, &f->elem);
   

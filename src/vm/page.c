@@ -24,7 +24,8 @@ page_less (const struct hash_elem *a,
        < hash_entry (b, struct page, elem)->addr;
 }
 
-struct page_table* 
+/* Initialises supplemental page table for the thread. */
+struct page_table * 
 pagetable_init (void)
 {
   struct page_table *page_table = malloc(sizeof(struct page_table));
@@ -33,6 +34,7 @@ pagetable_init (void)
   return page_table;
 }
 
+/* Locates and returns the supplemental page conntaining the page addr. */
 struct page *
 locate_page (void *addr, struct page_table *page_table)
 {
@@ -50,6 +52,7 @@ locate_page (void *addr, struct page_table *page_table)
   return p;
 }
 
+/* Creates a supplemental page with addr and inserts it to thread's supplemental page table. */
 void
 add_page (void *addr, void *data, enum page_status status, struct page_table *page_table, bool writable)
 {
@@ -69,6 +72,7 @@ add_page (void *addr, void *data, enum page_status status, struct page_table *pa
   lock_release (&page_table->lock);
 }
 
+/* Removes the supplemental page with addr from thread's supplemental page table. */
 void
 remove_page (void *addr, struct page_table *page_table)
 {
@@ -80,13 +84,17 @@ remove_page (void *addr, struct page_table *page_table)
   lock_release (&page_table->lock);
   free (page);
 }
+
+/* Destroys the thread's supplemental page table, freeing its resources. */
+void 
+pagetable_destroy (struct page_table *page_table)
+{
+  hash_destroy (&page_table->table, page_remove);
+}
+
+/* Auxillary for pagetable_destroy. */
 static void
 page_remove (struct hash_elem *e, void *aux UNUSED)
 {
   free (hash_entry (e, struct page, elem));
-}
-
-void pagetable_destroy (struct page_table *page_table)
-{
-  hash_destroy (&page_table->table, page_remove);
 }
