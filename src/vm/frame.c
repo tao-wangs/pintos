@@ -64,12 +64,13 @@ locate_frame (void *page, struct inode *node)
 }
 
 struct frame *
-find_free_frame () {
+find_free_frame () 
+{
   for (struct list_elem *e = list_begin (&table.frames);
        e != list_end (&table.frames);
        e = list_next (e))
   {
-    f = list_entry (e, struct frame, elem);
+    struct frame *f = list_entry (e, struct frame, elem);
     if (!f->page)
       return f;
     else if (f->accessed)
@@ -85,7 +86,7 @@ find_free_frame () {
 }
 
 struct frame *
-alloc_frame (void *page)
+alloc_frame (void *page, bool writable, struct inode *node, bool *shared)
 {
   lock_acquire (&frame_lock);
   struct frame *f;
@@ -109,7 +110,6 @@ alloc_frame (void *page)
     f->writable = writable;
     f->num_refs++;
     f->file_node = node;
-    allocated = true;
     lock_release (&frame_lock);
     return f;
   }
