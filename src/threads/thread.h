@@ -119,13 +119,12 @@ struct thread
     struct threadtable *parent_table;
 
     struct list file_list;              /* List of open files */
-    int fd_incr;                 /* File descriptor incrementer */
+    int fd_incr;                        /* File descriptor incrementer */
     struct file *file;                  /* File kept open */
     struct page_table *page_table;
 
     struct list mappings;               /* List of file to VM mappings */
-    int mid_incr;                /* Mapping id incrementer */
-
+    int mapid_incr;                     /* Mapping id incrementer */
 #endif
 
     void *esp;                          /* Stack pointer */  
