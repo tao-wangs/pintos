@@ -426,6 +426,7 @@ close (int fd)
   lock_release (&filesystem_lock);
 }
 
+/* Maps file fd to process' virtual memory starting at address addr. */
 static mapid_t 
 mmap (int fd, void *addr)
 { 
@@ -474,23 +475,18 @@ mmap (int fd, void *addr)
     exit (-1); //or return -1?
   }
 
+  mapping->mid = thread_current ()->mid_incr++;
+  
+  lock_release (&filesystem_lock);
+
   mapping->addr = addr;
   mapping->fp = new_fp;
-  mapping->mid = thread_current ()->mid_incr++;
   mapping->page_cnt = 0;
 
   list_push_back (&thread_current ()->mappings, &mapping->elem);
 
-  //I will make this a bit more fine grained
-  lock_release (&filesystem_lock);
-  
   //could do loop with while remaining_length > PGSIZE?
   while (remaining_length > 0) {
-
-    //printf("Inside while loop\n");
-    //printf("Length = %d\n", remaining_length);
-    //printf("Offset = %d\n", offset);
-    
     struct file_data *file_data = malloc (sizeof (file_data));
 
     if (!file_data) {
@@ -510,11 +506,8 @@ mmap (int fd, void *addr)
     offset += file_data->read_bytes;
     mapping->page_cnt++;
   }
-
-  //printf("Outside while loop\n");
   
   return mapping->mid;
-  
 }
 
 static void 
