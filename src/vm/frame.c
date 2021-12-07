@@ -82,18 +82,20 @@ find_free_frame ()
     else
     {
       //printf ("evicting page %p from frame %d\n", f->page, f->fid);
-      struct swapslot * slot = evict_to_swap (f->page);
+      struct swapslot * slot = evict_to_swap (f->page, f->kPage);
       f->page = NULL;
       slot->num_refs = f->num_refs;
       f->num_refs = 0;
       struct list_elem *e = list_begin (&f->page_list);
       while (e != list_end (&f->page_list))
       {
-	struct list_elem *next = list_next (e);
+	    struct list_elem *next = list_next (e);
         list_remove (e);
-	struct page *page = list_entry (e, struct page, page_elem);
-	list_push_back (&slot->page_list, &page->swap_elem);
-	pagedir_clear_page (page->t->pagedir, page->addr);
+	    struct page *page = list_entry (e, struct page, page_elem);
+	    list_push_back (&slot->page_list, &page->swap_elem);
+        page->status = SWAP;
+        page->data = slot;
+	    pagedir_clear_page (page->t->pagedir, page->addr);
         e = next;
       }
       return f;

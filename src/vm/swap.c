@@ -59,20 +59,20 @@ pop_free_slot(void)
 }
 
 struct swapslot *
-evict_to_swap(void *addr)
+evict_to_swap(void *addr, void *kpage)
 {
-  struct page *page = locate_page (addr, thread_current ()->page_table);
+  //struct page *page = locate_page (addr, thread_current ()->page_table);
   lock_acquire (&swap_lock);
   struct swapslot *free_slot = pop_free_slot ();
   if (free_slot == NULL){
     PANIC ("Swap is full!!!");
   } 
-  void* kpage = pagedir_get_page (thread_current ()->pagedir, addr);
+  //void* kpage = pagedir_get_page (thread_current ()->pagedir, addr);
   for (int i = 0; i < PGSIZE/BLOCK_SECTOR_SIZE; i++){
     block_write (swap, free_slot->sector + i, kpage + (BLOCK_SECTOR_SIZE * i));
   }
-  page->status = SWAP;
-  page->data = (void *) free_slot;
+  //page->status = SWAP;
+  //page->data = (void *) free_slot;
   lock_release(&swap_lock);
   return free_slot;
 }
@@ -94,17 +94,18 @@ void get_from_swap(struct page *page, struct frame *frame){
     struct list_elem *next = list_next (e);
     list_remove (e);
     struct page *new_page = list_entry (e, struct page, swap_elem);
+    new_page->status = FRAME;
+    new_page->data = NULL;
     if (new_page == page)
     {
       e = next;
       continue;
     }
+    pagedir_set_page (new_page->t->pagedir, new_page->addr, frame->kPage, new_page->writable);
     list_push_back (&frame->page_list, &new_page->page_elem);
     e = next;
   }
   frame->num_refs = free_slot->num_refs;
-  page->data = NULL;
-  page->status = FRAME;
   lock_release(&swap_lock);
 }
 
