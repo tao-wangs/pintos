@@ -38,7 +38,8 @@ static unsigned tell (int fd);
 static void close (int fd);
 
 static mapid_t mmap (int fd, void *addr);
-static void munmap (mapid_t);
+static void munmap (mapid_t mapid_t);
+static struct m_map *find_mmap (mapid_t mapid_t);
 
 static void *first_arg (struct intr_frame *f);
 static void *second_arg (struct intr_frame *f);
@@ -460,7 +461,7 @@ mmap (int fd, void *addr)
     return -1;
   }
 
-  //Ensure that mapping will not overlap existing mappings 
+  /* Check that pending mapping will not overlap existing mappings */ 
   for (int i = 0; i <= remaining_length / PGSIZE; i++) {
     if (locate_page ((uint8_t *) addr + (i * PGSIZE), thread_current ()->page_table) != NULL) {
       lock_release (&filesystem_lock);
@@ -468,11 +469,12 @@ mmap (int fd, void *addr)
     }
   }
 
-  //Begin mapping 
+  /* Add mapping to thread's list of mappings */ 
   struct m_map *mapping = malloc (sizeof (struct m_map));
 
   if (!mapping) {
-    exit (-1); //or return -1?
+    lock_release (&filesystem_lock);
+    return -1; 
   }
 
   mapping->mid = thread_current ()->mid_incr++;
@@ -485,7 +487,7 @@ mmap (int fd, void *addr)
 
   list_push_back (&thread_current ()->mappings, &mapping->elem);
 
-  //could do loop with while remaining_length > PGSIZE?
+  /* Add pages to supplemental page table */
   while (remaining_length > 0) {
     struct file_data *file_data = malloc (sizeof (file_data));
 
@@ -493,7 +495,7 @@ mmap (int fd, void *addr)
       return -1;
     }
 
-    int read_bytes = remaining_length >= PGSIZE ? PGSIZE : remaining_length;
+    uint32_t read_bytes = remaining_length < PGSIZE ? remaining_length : PGSIZE;
 
     file_data->file = new_fp;
     file_data->ofs = offset;
@@ -502,39 +504,55 @@ mmap (int fd, void *addr)
 
     add_page ((uint8_t *) addr + offset, file_data, FILE_SYS, thread_current ()->page_table, true);
 
+    mapping->page_cnt++;
+
     remaining_length -= file_data->read_bytes;
     offset += file_data->read_bytes;
-    mapping->page_cnt++;
   }
   
   return mapping->mid;
 }
 
+/* Unmaps file fd from process' virtual memory starting at address addr. */
 static void 
-munmap (mapid_t mapid_t)
-{ 
+munmap (mapid_t mapid) 
+{
+  struct m_map *mmap = find_mmap (mapid);
+
+  if (!mmap) {
+    return;
+  }
+
+  /* Only writes modified pages back to the file */
+  for (int i = 0; i < mmap->page_cnt; i++) {
+    if (pagedir_is_dirty (thread_current ()->pagedir, (uint8_t *) mmap->addr + PGSIZE * i)) {
+      lock_acquire (&filesystem_lock);
+      file_write_at (mmap->fp, mmap-> addr, PGSIZE, PGSIZE * i);
+      lock_release (&filesystem_lock);
+    }
+    remove_page ((uint8_t *) mmap->addr + PGSIZE * i, thread_current ()->page_table);
+  }
+  
+  list_remove (&mmap->elem);
+  free (mmap);
+}
+
+/* Locates and returns the mapping within the current process with mapping id mapid */
+static struct m_map *
+find_mmap (mapid_t mapid) 
+{
   struct list_elem *e;
   struct list *mappings = &thread_current ()->mappings;
 
   for (e = list_begin (mappings); e != list_end (mappings); e = list_next (e)) {
     struct m_map *mmap = list_entry (e, struct m_map, elem);
-    if (mmap->mid == mapid_t) {
-      for (int i = mmap->page_cnt; i > 0; i--) 
-      { 
-        if (pagedir_is_dirty (thread_current ()->pagedir, (uint8_t *) mmap->addr + PGSIZE * (i-1))) {
-          lock_acquire (&filesystem_lock); //try without pgsize * (i-1)
-          file_write_at (mmap->fp, (uint8_t *) mmap->addr + PGSIZE * (i-1), PGSIZE, (i-1) * PGSIZE);
-          //hex_dump (mmap->addr + (i-1) * PGSIZE, mmap->addr + (i-1) * PGSIZE, PGSIZE, true);
-          lock_release (&filesystem_lock);
-        }
-        remove_page ((uint8_t *) mmap->addr + PGSIZE * (i-1), thread_current ()->page_table);
-      }
-      list_remove (&mmap->elem);
-      free (mmap);
-      break;
+    if (mmap->mid == mapid) {
+      return mmap;
     }
-  } 
-}
+  }
+
+  return NULL;
+} 
 
 /* Initialises system call handler and file system lock. */
 void
