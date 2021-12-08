@@ -6,6 +6,7 @@
 #include "filesys/off_t.h"
 #include "filesys/file.h"
 #include "threads/synch.h"
+#include "vm/locklist.h"
 
 enum page_status
 {
@@ -32,7 +33,7 @@ struct page
   struct thread *t;
   bool writable;
   struct inode *node;
-  struct list_elem page_elem;
+  struct locklist_elem page_elem;
   struct list_elem swap_elem;
 };
 

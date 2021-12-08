@@ -108,7 +108,9 @@ void get_from_swap(struct page *page, struct frame *frame){
       continue;
     }
     pagedir_set_page (new_page->t->pagedir, new_page->addr, frame->kPage, new_page->writable);
-    list_push_back (&frame->page_list, &new_page->page_elem);
+    lock_acquire (&new_page->page_elem.lock); 
+    locklist_push_back (&frame->page_list, &new_page->page_elem);
+    lock_release (&new_page->page_elem.lock); 
     e = next;
   }
   frame->num_refs = free_slot->num_refs;

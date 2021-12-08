@@ -7,19 +7,18 @@
 
 struct frame {
   int fid;
-  struct list_elem elem;
+  struct locklist_elem elem;
   void *page;
   void *kPage;
   bool accessed;
   bool writable;
   int num_refs;
   struct inode *file_node;
-  struct list page_list;
-  struct lock lock;
+  struct locklist page_list;
 };
 
 struct frametable {
-  struct list frames;
+  struct locklist frames;
 };
 
 void frametable_init (void);

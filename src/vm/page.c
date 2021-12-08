@@ -67,6 +67,7 @@ add_page (void *addr, void *data, enum page_status status, struct page_table *pa
   page->status = status;
   page->writable = writable;
   page->t = thread_current ();
+  elem_init (&page->page_elem);
   lock_acquire (&page_table->lock);
   hash_insert (&page_table->table, &page->elem);
   lock_release (&page_table->lock);
