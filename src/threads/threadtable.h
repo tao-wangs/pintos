@@ -6,16 +6,16 @@
 #include "threads/synch.h"
 
 struct threadtable_elem {
-  struct semaphore sema;            /* Synchronises wait with child exit */ 
-  struct semaphore start_sema;      /* Synchronises execute with child start */
-  struct hash_elem elem;            /* Used to store the elem in the hashtable */
-  struct list_elem lst_elem;        /* Used to store the elem in the child list */
-  int tid;                          /* tid of the child thread */
-  int parent_tid;                   /* tid of the parent thread */
-  int status;                       /* exit status of child thread */
-  int refs;                         /* counts references to elem */
-  bool waited;                      /* has wait been called successfully */
-  bool started;                     /* did the program start correctly */
+  struct semaphore sema;            /* Synchronises wait with child exit. */ 
+  struct semaphore start_sema;      /* Synchronises execute with child start. */
+  struct hash_elem elem;            /* Used to store the elem in the hashtable. */
+  struct list_elem lst_elem;        /* Used to store the elem in the child list. */
+  int tid;                          /* tid of the child thread. */
+  int parent_tid;                   /* tid of the parent thread. */
+  int status;                       /* exit status of child thread. */
+  int refs;                         /* counts references to elem. */
+  bool waited;                      /* has wait been called successfully. */
+  bool started;                     /* did the program start correctly. */
 };
 
 struct threadtable {

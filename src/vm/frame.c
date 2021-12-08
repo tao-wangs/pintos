@@ -9,11 +9,12 @@
 #include "userprog/pagedir.h"
 #include "vm/locklist.h"
 
-struct frametable table;
-struct lock frame_lock;
+struct frametable table;    /* Frame table. */
+struct lock frame_lock;     /* Frame lock. */
 
 extern uint32_t init_ram_pages;
 
+/* Initialises frame table, frame lock and frames in user pool. */
 void 
 frametable_init (void)
 { 
@@ -40,6 +41,7 @@ frametable_init (void)
 
 }
 
+/* Frees frame table. */
 void
 frametable_free (void)
 {
@@ -53,7 +55,8 @@ frametable_free (void)
   } 
 }
 
-//If f is not NULL, returns holding locks to f->prev, f, and f->next 
+/* Locates frame with contains the page.  
+   Protected by frame lock before calling. */
 struct frame *
 locate_frame (void *page, struct inode *node) 
 {
@@ -71,6 +74,7 @@ locate_frame (void *page, struct inode *node)
   return NULL;
 }
 
+/* Allocates a page to a frame. */
 struct frame *
 find_free_frame () 
 {
@@ -160,6 +164,7 @@ alloc_frame (struct page *page, bool writable, struct inode *node, bool *shared)
   PANIC ("alloc_frame: no free frames!"); 
 }
 
+/* Frees the frame in the user pool with kernel address kpage */
 void
 free_frame (void *kpage)
 {

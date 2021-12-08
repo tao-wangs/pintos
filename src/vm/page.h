@@ -8,6 +8,7 @@
 #include "threads/synch.h"
 #include "vm/locklist.h"
 
+/* Information about what is in the page. */
 enum page_status
 {
    FRAME, 
@@ -16,27 +17,30 @@ enum page_status
    ZERO
 };
 
+/* File data. */
 struct file_data
 {
-  struct file *file;
-  off_t ofs;
-  uint32_t read_bytes;
-  uint32_t zero_bytes;
+  struct file *file;         /* File pointer. */
+  off_t ofs;                 /* Offset.       */
+  uint32_t read_bytes;       /* Number of read_bytes. */
+  uint32_t zero_bytes;       /* Number of zero_bytes (PGSIZE - read_bytes). */
 };
 
+/* Supplemental page, per thread. */
 struct page
 {
-  struct hash_elem elem;
-  void *addr;
-  enum page_status status;
-  void *data;
-  struct thread *t;
-  bool writable;
-  struct inode *node;
-  struct locklist_elem page_elem;
-  struct list_elem swap_elem;
+  struct hash_elem elem;          /* Hash elem. */ 
+  void *addr;                     /* Page pointer. */
+  enum page_status status;        /* Page status. */
+  void *data;                     /* Data depending on page_status. */
+  struct thread *t;               /* Thread owning the supplemental page table. */
+  bool writable;                  /* Writable. */
+  struct inode *node;             /* Inode. */
+  struct locklist_elem page_elem; /* Used to store page in frame page_list. */
+  struct list_elem swap_elem;     /* Used to store page in swap page_list. */
 };
 
+/* Supplemental page table, synchronised with a lock. */
 struct page_table
 {
   struct hash table;

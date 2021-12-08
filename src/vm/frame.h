@@ -6,17 +6,17 @@
 #include "page.h"
 
 struct frame {
-  int fid;
-  struct locklist_elem elem;
-  void *page;
-  void *kPage;
-  bool accessed;
-  bool writable;
-  int num_refs;
-  struct inode *file_node;
-  struct locklist page_list;
+  struct list_elem elem;      /* List elem. */
+  void *page;                 /* User address. */
+  void *kPage;                /* Frame's address in user pool. */
+  bool accessed;              /* Accessed. */
+  bool writable;              /* Writable. */
+  int num_refs;               /* Number of references. */
+  struct inode *file_node;    /* Inode. */
+  struct locklist page_list;  /* List of pages that map to this frame. */
 };
 
+/* List of frames */
 struct frametable {
   struct locklist frames;
 };
