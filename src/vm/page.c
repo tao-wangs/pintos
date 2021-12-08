@@ -79,12 +79,11 @@ remove_page (void *addr, struct page_table *page_table)
   struct page *page = locate_page (addr, page_table); 
   if (!page)
     return;
-  pagedir_clear_page (page->t->pagedir, addr);
   lock_acquire (&page_table->lock);
   switch (page->status)
   { 
     case FRAME:
-      free_frame (addr);
+      free_frame (pagedir_get_page(page->t->pagedir, page->addr));
       break;
     case FILE_SYS:
       free (page->data);
@@ -94,6 +93,7 @@ remove_page (void *addr, struct page_table *page_table)
     case ZERO:
       break;
   }
+  pagedir_clear_page (page->t->pagedir, addr);
   hash_delete (&page_table->table, &page->elem);
   lock_release (&page_table->lock);
   free (page);
@@ -101,8 +101,25 @@ remove_page (void *addr, struct page_table *page_table)
 static void
 page_remove (struct hash_elem *e, void *aux UNUSED)
 {
-  struct page *p = hash_entry (e, struct page, elem);
-  remove_page (p->addr, p->t->page_table);
+  struct page *page = hash_entry (e, struct page, elem);
+  lock_acquire (&page->t->page_table->lock);
+  switch (page->status)
+  { 
+    case FRAME:
+      free_frame (pagedir_get_page(page->t->pagedir, page->addr));
+      break;
+    case FILE_SYS:
+      free (page->data);
+      break;
+    case SWAP:  
+      free_swapslot ((struct swapslot *) page->data, page);
+    case ZERO:
+      break;
+  }
+  pagedir_clear_page (page->t->pagedir, page->addr);
+  hash_delete (&page->t->page_table->table, &page->elem);
+  lock_release (&page->t->page_table->lock);
+  free (page);
 }
 
 void pagetable_destroy (struct page_table *page_table)

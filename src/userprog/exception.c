@@ -149,6 +149,9 @@ page_fault (struct intr_frame *f)
   /* Turn interrupts back on (they were only off so that we could
      be assured of reading CR2 before it changed). */
   intr_enable ();
+  //printf ("page fault at %p\n", fault_addr);
+  if (fault_addr == -1)
+    printf ("break now!\n");
 
   /* Count page faults. */
   page_fault_cnt++;
