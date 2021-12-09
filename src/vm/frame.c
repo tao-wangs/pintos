@@ -18,7 +18,6 @@ extern uint32_t init_ram_pages;
 void 
 frametable_init (void)
 { 
-  int j = 0;
   locklist_init (&table.frames);
   lock_init (&frame_lock);
   for (int i = 0; i < 367; ++i)
@@ -32,11 +31,9 @@ frametable_init (void)
     f->num_refs = 0;
     f->page = NULL;
     f->accessed = false;
-    f->fid = j;
     locklist_init (&f->page_list);
     elem_init (&f->elem);
     locklist_push_back (&table.frames, &f->elem);
-    j++;
   }
 
 }
@@ -83,6 +80,22 @@ find_free_frame ()
        e = locklist_next (e))
   {
     struct frame *f = list_entry (e, struct frame, elem);
+    /*if (!f->accessed)
+    {
+      for (struct locklist_elem *ep = locklist_begin (&f->page_list);
+           ep != locklist_end (&f->page_list);
+           ep = locklist_next (ep))
+      {
+        struct page *page = list_entry (ep, struct page, page_elem);
+        if (pagedir_is_accessed (page->t->pagedir, page->addr))
+        {
+          //f->accessed = true;
+          pagedir_set_accessed (page->t->pagedir, page->addr, false);
+        }
+      }
+      lock_release (&f->page_list.tail.prev->lock);    
+      lock_release (&f->page_list.tail.lock);    
+    }*/
     if (!f->page)
       return f;
     else if (f->accessed)

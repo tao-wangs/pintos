@@ -134,9 +134,3 @@ pagetable_destroy (struct page_table *page_table)
   hash_destroy (&page_table->table, page_remove);
 }
 
-/* Auxillary for pagetable_destroy. */
-static void
-page_remove (struct hash_elem *e, void *aux UNUSED)
-{
-  free (hash_entry (e, struct page, elem));
-}

@@ -6,7 +6,7 @@
 #include "page.h"
 
 struct frame {
-  struct list_elem elem;      /* List elem. */
+  struct locklist_elem elem;      /* List elem. */
   void *page;                 /* User address. */
   void *kPage;                /* Frame's address in user pool. */
   bool accessed;              /* Accessed. */

@@ -522,7 +522,7 @@ munmap (mapid_t mapid)
   for (int i = 0; i < mmap->page_cnt; i++) {
     if (pagedir_is_dirty (thread_current ()->pagedir, (uint8_t *) mmap->addr + PGSIZE * i)) {
       lock_acquire (&filesystem_lock);
-      file_write_at (mmap->fp, mmap-> addr, PGSIZE, PGSIZE * i);
+      file_write_at (mmap->fp, mmap->addr + PGSIZE * i, PGSIZE, PGSIZE * i);
       lock_release (&filesystem_lock);
     }
     remove_page ((uint8_t *) mmap->addr + PGSIZE * i, thread_current ()->page_table);
