@@ -102,24 +102,7 @@ find_free_frame ()
       f->accessed = false;  
     else
     {
-      struct swapslot * slot = evict_to_swap (f->page, f->kPage);
-      f->page = NULL;
-      slot->num_refs = f->num_refs;
-      f->num_refs = 0;
-      struct locklist_elem *e = locklist_begin (&f->page_list);
-      while (e != locklist_end (&f->page_list))
-      {
-	    struct locklist_elem *next = locklist_remove (e);
-	    struct page *page = list_entry (e, struct page, page_elem);
-	    list_push_back (&slot->page_list, &page->swap_elem);
-        page->status = SWAP;
-        page->data = slot;
-	    pagedir_clear_page (page->t->pagedir, page->addr);
-        lock_release (&e->lock);
-        e = next;
-      }
-      lock_release (&f->page_list.head.lock);
-      lock_release (&f->page_list.tail.lock);
+      evict_to_swap (f);
       return f;
     }
   }
