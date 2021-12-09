@@ -66,6 +66,7 @@ pop_free_slot(void)
   return NULL;
 }
 
+/* Evicts the given frame to the swap */
 void
 evict_to_swap(struct frame *frame)
 {
@@ -98,6 +99,7 @@ evict_to_swap(struct frame *frame)
   lock_release(&swap_lock);
 }
 
+/* Moves the frame back into a frame from the swap, uses page to get where it is stored on the swap disk */
 void get_from_swap(struct page *page, struct frame *frame){
   lock_acquire(&swap_lock);
   ASSERT(page->status == SWAP);

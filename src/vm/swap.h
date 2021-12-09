@@ -14,7 +14,7 @@ struct swapslot{
 };
 
 struct swap {
-  struct list slots;
+  struct list slots;		      /* Free sectors on swap */
 };
 
 void swaptable_init(void);

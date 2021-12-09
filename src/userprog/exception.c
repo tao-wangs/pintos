@@ -175,6 +175,7 @@ page_fault (struct intr_frame *f)
       exit (-1);
 
     int old_level = intr_disable ();
+    
     if (page->status == FRAME)
     {
       intr_set_level (old_level);
@@ -190,17 +191,22 @@ page_fault (struct intr_frame *f)
     {
       intr_set_level (old_level);
     }
+    
     bool shared = false;
     struct frame *frame = alloc_frame (page, page->writable, page->node, &shared);
+    
     if (!frame)
       PANIC ("failed to alloc frame");
+    
     if (!pagedir_set_page (page->t->pagedir, page->addr, frame->kPage, page->writable))
       PANIC ("failed to set page");
+    
     if (shared)
     {
       page->status = FRAME;
       return;
     }
+
     switch (page->status)
     {
       case FRAME:
@@ -235,6 +241,7 @@ page_fault (struct intr_frame *f)
         memset (page->addr, 0, PGSIZE);
         break;
     }
+
     page->status = FRAME; 
   } else {
     if (user)
@@ -264,5 +271,5 @@ grow_the_stack (void *fault_addr) {
    }
       
    add_page(fault_addr, NULL, ZERO, current_thread->page_table, true);
-
 }
+
