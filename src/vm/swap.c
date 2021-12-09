@@ -13,11 +13,9 @@ struct block *swap;
 
 static struct swapslot *pop_free_slot(void);
 
+/* Initialise swap table. */
 void swaptable_init(void){
-  //printf("INside swap table sdakljksladlskjklsjkldjklsjkldsajlksadjldsakjsdklsjdalasdjlksadjklsdajlksaDSLJDSKLJDSLKJSKDLJDSKLJSLKJDLSd\n");
-  //size();
   list_init(&table2.slots);
-  //size(); 
   lock_init(&swap_lock);
 
   swap = block_get_role(BLOCK_SWAP);
@@ -26,13 +24,14 @@ void swaptable_init(void){
     if (!slot){
     	PANIC("Failed to allocate swapslot\n");
     }
-    slot->sector = i; //might have to be offset by 1
+    slot->sector = i; 
     list_init (&slot->page_list);
     sema_init (&slot->sema, 1);
     list_push_back(&table2.slots, &slot->elem);
   }
 }
 
+/* Free swap table resources. */
 void swaptable_free(void){
   struct list_elem *e = list_begin(&table2.slots);
   while (e != list_end(&table2.slots)){
@@ -42,6 +41,7 @@ void swaptable_free(void){
   }
 }
 
+/* Free swap slot. */
 void free_swapslot(struct swapslot *slot, struct page *page){
   lock_acquire (&swap_lock);
   list_remove (&page->swap_elem); 
@@ -54,6 +54,7 @@ void free_swapslot(struct swapslot *slot, struct page *page){
   lock_release (&swap_lock);
 }
 
+/* Returns pointer to first swap slot. */
 static struct swapslot *
 pop_free_slot(void)
 {
@@ -98,11 +99,9 @@ evict_to_swap(struct frame *frame)
 }
 
 void get_from_swap(struct page *page, struct frame *frame){
-  //PANIC ("SWAPTABLE FREE5\n");
   lock_acquire(&swap_lock);
   ASSERT(page->status == SWAP);
   ASSERT(frame != NULL);
-  //printf ("getting page %p into frame %d\n", page->addr, frame->fid);
   struct swapslot *free_slot = (struct swapslot *) page->data;
   list_push_back(&table2.slots, &free_slot->elem);
   for (int i = 0; i< PGSIZE/BLOCK_SECTOR_SIZE; i++){

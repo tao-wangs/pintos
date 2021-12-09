@@ -221,7 +221,3 @@ free_frame (void *kpage)
   locklist_push_front (&table.frames, &f->elem);
   lock_release (&f->elem.lock); 
 }
-
-void size () {
-  printf("Size is %d\n", locklist_size(&table.frames));
-}

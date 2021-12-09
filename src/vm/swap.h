@@ -6,11 +6,11 @@
 #include "devices/block.h"
 
 struct swapslot{
-  struct list_elem elem;
-  block_sector_t sector;
-  struct list page_list;
-  int num_refs;
-  struct semaphore sema;
+  struct list_elem elem;              /* List elem. */
+  block_sector_t sector;              /* Block sector. */
+  struct list page_list;              /* List of pages. */
+  int num_refs;                       /* Number of references. */
+  struct semaphore sema;              /* Swap slot semaphore. */
 };
 
 struct swap {
