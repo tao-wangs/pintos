@@ -80,7 +80,7 @@ find_free_frame ()
        e = locklist_next (e))
   {
     struct frame *f = list_entry (e, struct frame, elem);
-    /*if (!f->accessed)
+    if (!f->accessed)
     {
       for (struct locklist_elem *ep = locklist_begin (&f->page_list);
            ep != locklist_end (&f->page_list);
@@ -89,13 +89,13 @@ find_free_frame ()
         struct page *page = list_entry (ep, struct page, page_elem);
         if (pagedir_is_accessed (page->t->pagedir, page->addr))
         {
-          //f->accessed = true;
+          f->accessed = true;
           pagedir_set_accessed (page->t->pagedir, page->addr, false);
         }
       }
       lock_release (&f->page_list.tail.prev->lock);    
       lock_release (&f->page_list.tail.lock);    
-    }*/
+    }
     if (!f->page)
       return f;
     else if (f->accessed)
@@ -155,7 +155,9 @@ alloc_frame (struct page *page, bool writable, struct inode *node, bool *shared)
     }
   }
 
-  f = find_free_frame();
+  f = find_free_frame ();
+  if (!f)
+    f = find_free_frame ();
   
   if (f) {
     locklist_remove (&f->elem);
