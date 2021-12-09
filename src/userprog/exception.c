@@ -161,13 +161,6 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-    /* The PUSH and PUSHA instructions are not the only instructions
-      that can trigger user stack growth. */     
-  /* if (fault_addr < PHYS_BASE && fault_addr >= stack_pointer - 32 && write) {
-      grow_the_stack(fault_addr);
-      return;
-   } */
-
    if (user) {
       thread_current ()->esp = f->esp;
    }
@@ -286,6 +279,7 @@ grow_the_stack (void *fault_addr) {
    /* We are using this to add our new page to the page table of the current
       thread. The add_page function will handle the rounding down of the stack 
       pointer for us, so we do not need to explicitly do it. */
+      
    add_page(fault_addr, NULL, ZERO, current_thread->page_table, true);
 
 }
