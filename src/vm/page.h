@@ -6,6 +6,7 @@
 #include "filesys/off_t.h"
 #include "filesys/file.h"
 #include "threads/synch.h"
+#include "vm/locklist.h"
 
 /* Information about what is in the page. */
 enum page_status
@@ -28,13 +29,15 @@ struct file_data
 /* Supplemental page, per thread. */
 struct page
 {
-  struct hash_elem elem;     /* Hash elem. */ 
-  void *addr;                /* Page pointer. */
-  enum page_status status;   /* Page status. */
-  void *data;                /* Data depending on page_status. */
-  struct thread *t;          /* Thread owning the supplemental page table. */
-  bool writable;             /* Writable. */
-  struct inode *node;        /* Inode. */
+  struct hash_elem elem;          /* Hash elem. */ 
+  void *addr;                     /* Page pointer. */
+  enum page_status status;        /* Page status. */
+  void *data;                     /* Data depending on page_status. */
+  struct thread *t;               /* Thread owning the supplemental page table. */
+  bool writable;                  /* Writable. */
+  struct inode *node;             /* Inode. */
+  struct locklist_elem page_elem; /* Used to store page in frame page_list. */
+  struct list_elem swap_elem;     /* Used to store page in swap page_list. */
 };
 
 /* Supplemental page table, synchronised with a lock. */

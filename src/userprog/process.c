@@ -192,6 +192,7 @@ process_exit (void)
   lock_release (&filesystem_lock);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  pagetable_destroy (cur->page_table);
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -578,13 +579,12 @@ static bool
 setup_stack (void **esp, const char *file_name) 
 {
   bool success = false;
-
-  add_page (((uint8_t *) PHYS_BASE) - PGSIZE, NULL, FRAME, thread_current()->page_table, true);
-  struct frame *frame = alloc_frame (((uint8_t *) PHYS_BASE) - PGSIZE, true, NULL, NULL);
-  //kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  void* page_addr = (uint8_t *) PHYS_BASE - PGSIZE;
+  add_page (page_addr, NULL, FRAME, thread_current()->page_table, true);
+  struct frame *frame = alloc_frame (locate_page(page_addr, thread_current()->page_table), true, NULL, NULL);
   if (frame != NULL) 
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame->kPage, true);
+    { 
+      success = install_page (page_addr, frame->kPage, true);
       if (success)
         *esp = PHYS_BASE;
       else

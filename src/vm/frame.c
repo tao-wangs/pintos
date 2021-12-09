@@ -2,8 +2,12 @@
 #include "threads/loader.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
+#include "threads/thread.h"
 #include "threads/synch.h"
 #include <stdio.h>
+#include "vm/swap.h"
+#include "userprog/pagedir.h"
+#include "vm/locklist.h"
 
 struct frametable table;    /* Frame table. */
 struct lock frame_lock;     /* Frame lock. */
@@ -13,31 +17,39 @@ extern uint32_t init_ram_pages;
 /* Initialises frame table, frame lock and frames in user pool. */
 void 
 frametable_init (void)
-{
-  list_init (&table.frames);
+{ 
+  int j = 0;
+  locklist_init (&table.frames);
   lock_init (&frame_lock);
-  printf ("init_ram_pages: %d\n", init_ram_pages);
   for (int i = 0; i < 367; ++i)
   {
     struct frame *f = malloc (sizeof (struct frame));
     if (!f)
       PANIC ("Failed to malloc frame");
     f->kPage = palloc_get_page (PAL_USER);
-    f->num_refs = 0;
     if (!f->kPage)
       PANIC ("FAILED to palloc frame");
-    list_push_back (&table.frames, &f->elem);
+    f->num_refs = 0;
+    f->page = NULL;
+    f->accessed = false;
+    f->fid = j;
+    locklist_init (&f->page_list);
+    elem_init (&f->elem);
+    locklist_push_back (&table.frames, &f->elem);
+    j++;
   }
+
 }
 
 /* Frees frame table. */
 void
 frametable_free (void)
 {
-  struct list_elem *e = list_begin (&table.frames);
-  while (e != list_end (&table.frames))
+  struct locklist_elem *e = locklist_begin (&table.frames);
+  while (e != locklist_end (&table.frames))
   {
-    struct list_elem *next = list_next (e);
+    struct locklist_elem *next = locklist_remove (e);
+    lock_release (&e->lock);
     free (list_entry (e, struct frame, elem));
     e = next;
   } 
@@ -48,70 +60,118 @@ frametable_free (void)
 struct frame *
 locate_frame (void *page, struct inode *node) 
 {
-  for (struct list_elem *e = list_begin (&table.frames);
-       e != list_end (&table.frames);
-       e = list_next (e))
+  for (struct locklist_elem *e = locklist_begin (&table.frames);
+       e != locklist_end (&table.frames);
+       e = locklist_next (e))
   {
     struct frame *f = list_entry (e, struct frame, elem);
     if (f->page == page && f->file_node == node) {
       return f;
     }
   }
+  lock_release (&table.frames.tail.prev->lock); 
+  lock_release (&table.frames.tail.lock);
   return NULL;
 }
 
 /* Allocates a page to a frame. */
 struct frame *
-alloc_frame (void *page, bool writable, struct inode *node, bool *shared)
+find_free_frame () 
 {
-  bool allocated = false;
-  lock_acquire (&frame_lock);
-
-  struct frame *f;
-
-  if (!writable && node) {
-    f = locate_frame (page, node);
-    if (f && !f->writable) {
-      f->num_refs++;
-      lock_release (&frame_lock);
-      *shared = true;
+  for (struct locklist_elem *e = locklist_begin (&table.frames);
+       e != locklist_end (&table.frames);
+       e = locklist_next (e))
+  {
+    struct frame *f = list_entry (e, struct frame, elem);
+    if (!f->page)
+      return f;
+    else if (f->accessed)
+      f->accessed = false;  
+    else
+    {
+      struct swapslot * slot = evict_to_swap (f->page, f->kPage);
+      f->page = NULL;
+      slot->num_refs = f->num_refs;
+      f->num_refs = 0;
+      struct locklist_elem *e = locklist_begin (&f->page_list);
+      while (e != locklist_end (&f->page_list))
+      {
+	    struct locklist_elem *next = locklist_remove (e);
+	    struct page *page = list_entry (e, struct page, page_elem);
+	    list_push_back (&slot->page_list, &page->swap_elem);
+        page->status = SWAP;
+        page->data = slot;
+	    pagedir_clear_page (page->t->pagedir, page->addr);
+        lock_release (&e->lock);
+        e = next;
+      }
+      lock_release (&f->page_list.head.lock);
+      lock_release (&f->page_list.tail.lock);
       return f;
     }
   }
-  
-  for (struct list_elem *e = list_begin (&table.frames);
-       e != list_end (&table.frames);
-       e = list_next (e))
-  {
-    f = list_entry (e, struct frame, elem);
-    if (!f->page)
+  lock_release (&table.frames.tail.prev->lock);
+  lock_release (&table.frames.tail.lock);
+  return NULL;
+}
+
+struct frame *
+alloc_frame (struct page *page, bool writable, struct inode *node, bool *shared)
+{
+  struct frame *f;
+
+  if (!writable && node) {
+    f = locate_frame (page->addr, node);
+    if (f && !f->writable) 
     {
-      f->page = page;
-      f->writable = writable;
       f->num_refs++;
-      f->file_node = node;
-      allocated = true;
-      break;
+      lock_acquire (&page->page_elem.lock);
+      locklist_push_back (&f->page_list, &page->page_elem);
+      lock_release (&page->page_elem.lock);
+      *shared = true;
+      lock_release (&f->elem.prev->lock);
+      lock_release (&f->elem.lock);
+      lock_release (&f->elem.next->lock);
+      return f;
+    }
+    if (f)
+    {
+      lock_release (&f->elem.prev->lock);
+      lock_release (&f->elem.lock);
+      lock_release (&f->elem.next->lock);
     }
   }
+
+  f = find_free_frame();
   
-  lock_release (&frame_lock);
-  if (!allocated)
-  {
-    PANIC ("alloc_frame: no free frames!"); 
+  if (f) {
+    locklist_remove (&f->elem);
+    lock_release (&f->elem.prev->lock);
+    lock_release (&f->elem.next->lock);
+    if (f->elem.next->next != NULL)
+      lock_release (&f->elem.next->next->lock);
+    locklist_push_back (&table.frames, &f->elem);
+    lock_acquire (&page->page_elem.lock);
+    locklist_push_back (&f->page_list, &page->page_elem);
+    lock_release (&page->page_elem.lock);
+    f->page = page->addr;
+    f->writable = writable;
+    f->num_refs++;
+    f->file_node = node;
+    lock_release (&f->elem.lock);
+    return f;
   }
-  return f;
+  PANIC ("alloc_frame: no free frames!"); 
 }
 
 /* Frees the frame in the user pool with kernel address kpage */
 void
 free_frame (void *kpage)
 {
-  lock_acquire (&frame_lock);
   struct frame *f = NULL;
-  for (struct list_elem *e = list_begin (&table.frames);
-       e != list_end (&table.frames);
-       e = list_next (e))
+  for (struct locklist_elem *e = locklist_begin (&table.frames);
+       e != locklist_end (&table.frames);
+       e = locklist_next (e))
   {
     struct frame *temp = list_entry (e, struct frame, elem);
     if (temp->kPage == kpage) {
@@ -119,15 +179,51 @@ free_frame (void *kpage)
       break;
     }
   }
-  if (!f || f->num_refs--) {
-    lock_release (&frame_lock);
+
+  if (!f) {
+    lock_release (&table.frames.tail.prev->lock);
+    lock_release (&table.frames.tail.lock);
+    return;
+  }
+
+  struct locklist_elem *e = locklist_begin (&f->page_list);
+  while (e != locklist_end (&f->page_list))
+  {
+    struct page *page = list_entry(e, struct page, page_elem);
+    if (page->t == thread_current ())
+    {
+      locklist_remove (&page->page_elem);
+      lock_release (&e->prev->lock);
+      lock_release (&e->next->lock);
+      if (e->next->next != NULL)
+        lock_release (&e->next->next->lock);
+      break;
+    } else
+    {
+      e = locklist_next (e);
+    }
+  }
+  lock_release (&e->lock);
+  ASSERT (e != locklist_end (&f->page_list));
+
+  if (--f->num_refs){
+    lock_release (&f->elem.prev->lock);
+    lock_release (&f->elem.lock);
+    lock_release (&f->elem.next->lock);
     return;
   }
 
   f->page = NULL;
-  
-  list_remove (&f->elem);
-  list_push_front (&table.frames, &f->elem);
-  
-  lock_release (&frame_lock);
+  f->file_node = NULL;
+  locklist_remove (&f->elem);
+  lock_release (&f->elem.prev->lock);
+  lock_release (&f->elem.next->lock);
+  if (f->elem.next->next != NULL)
+    lock_release (&f->elem.next->next->lock);
+  locklist_push_front (&table.frames, &f->elem);
+  lock_release (&f->elem.lock); 
+}
+
+void size () {
+  printf("Size is %d\n", locklist_size(&table.frames));
 }

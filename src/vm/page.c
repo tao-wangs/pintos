@@ -1,9 +1,12 @@
 #include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
 #include <hash.h>
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "threads/thread.h"
+#include "userprog/pagedir.h"
 #include <stdio.h>
 
 static void page_remove (struct hash_elem *e, void *aux UNUSED);
@@ -67,6 +70,7 @@ add_page (void *addr, void *data, enum page_status status, struct page_table *pa
   page->status = status;
   page->writable = writable;
   page->t = thread_current ();
+  elem_init (&page->page_elem);
   lock_acquire (&page_table->lock);
   hash_insert (&page_table->table, &page->elem);
   lock_release (&page_table->lock);
@@ -80,8 +84,46 @@ remove_page (void *addr, struct page_table *page_table)
   if (!page)
     return;
   lock_acquire (&page_table->lock);
+  switch (page->status)
+  { 
+    case FRAME:
+      free_frame (pagedir_get_page(page->t->pagedir, page->addr));
+      break;
+    case FILE_SYS:
+      free (page->data);
+      break;
+    case SWAP:  
+      free_swapslot ((struct swapslot *) page->data, page);
+    case ZERO:
+      break;
+  }
+  pagedir_clear_page (page->t->pagedir, addr);
   hash_delete (&page_table->table, &page->elem);
   lock_release (&page_table->lock);
+  free (page);
+}
+
+static void
+page_remove (struct hash_elem *e, void *aux UNUSED)
+{
+  struct page *page = hash_entry (e, struct page, elem);
+  lock_acquire (&page->t->page_table->lock);
+  switch (page->status)
+  { 
+    case FRAME:
+      free_frame (pagedir_get_page(page->t->pagedir, page->addr));
+      break;
+    case FILE_SYS:
+      free (page->data);
+      break;
+    case SWAP:  
+      free_swapslot ((struct swapslot *) page->data, page);
+    case ZERO:
+      break;
+  }
+  pagedir_clear_page (page->t->pagedir, page->addr);
+  hash_delete (&page->t->page_table->table, &page->elem);
+  lock_release (&page->t->page_table->lock);
   free (page);
 }
 
