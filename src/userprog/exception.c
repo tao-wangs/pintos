@@ -172,7 +172,7 @@ page_fault (struct intr_frame *f)
       thread_current ()->esp = f->esp;
    }
 
-   if (is_a_stack_access(write, fault_addr)) {
+   if (is_a_stack_access(fault_addr)) {
       grow_the_stack(fault_addr);
    }
 
@@ -266,7 +266,7 @@ page_fault (struct intr_frame *f)
    functions in ‘userprog/pagedir.c’. */
 
 bool
-is_a_stack_access (bool write, void *fault_addr) {
+is_a_stack_access (void *fault_addr) {
    return (fault_addr < PHYS_BASE && (fault_addr >= (thread_current ()->esp - 32)));
 }
 
