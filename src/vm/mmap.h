@@ -3,6 +3,8 @@
 
 #include <list.h>
 
+#define MMAP_ERROR -1
+
 /* Mapping from files to user's virtual memory */ 
 struct m_map {
     int mapid;                  /* Mapping id. */
