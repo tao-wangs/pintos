@@ -428,20 +428,20 @@ mmap (int fd, void *addr)
 { 
   /* Fails if fd 0 or fd 1 or address 0 because cannot they be mapped, address is not page aligned */             
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO || !addr || pg_ofs(addr) != 0) {
-    return -1; 
+    return MMAP_ERROR; 
   }
 
   struct file *fp = get_corresponding_file (fd);
 
   if (!fp) {
-    return -1;
+    return MMAP_ERROR;
   }
 
   /* Obtain new independent reference to the file */
   struct file *new_fp = file_reopen (fp);
 
   if (!new_fp) {
-    return -1;
+    return MMAP_ERROR;
   }
 
   int offset = 0;
@@ -452,14 +452,16 @@ mmap (int fd, void *addr)
   
   if (!remaining_length) {
     lock_release (&filesystem_lock);
-    return -1;
+    return MMAP_ERROR;
   }
 
+  int pages = remaining_length/PGSIZE + (remaining_length % PGSIZE != 0);
+
   /* Check that pending mapping will not overlap existing mappings */ 
-  for (int i = 0; i <= remaining_length / PGSIZE; i++) {
+  for (int i = 0; i < pages; i++) {
     if (locate_page ((uint8_t *) addr + (i * PGSIZE), thread_current ()->page_table) != NULL) {
       lock_release (&filesystem_lock);
-      return -1;
+      return MMAP_ERROR;
     }
   }
 
@@ -468,7 +470,7 @@ mmap (int fd, void *addr)
 
   if (!mapping) {
     lock_release (&filesystem_lock);
-    return -1; 
+    return MMAP_ERROR; 
   }
 
   mapping->mapid = thread_current ()->mapid_incr++;
@@ -486,7 +488,7 @@ mmap (int fd, void *addr)
     struct file_data *file_data = malloc (sizeof (file_data));
 
     if (!file_data) {
-      return -1;
+      return MMAP_ERROR;
     }
 
     uint32_t read_bytes = remaining_length < PGSIZE ? remaining_length : PGSIZE;
