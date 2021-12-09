@@ -11,6 +11,7 @@
 #include "userprog/pagedir.h"
 #include "vm/page.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 #include "filesys/off_t.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
@@ -173,8 +174,25 @@ page_fault (struct intr_frame *f)
 
   if (page != NULL)
   {
-    if (page->status == FRAME)
+    if (write && !page->writable)
       exit (-1);
+
+    int old_level = intr_disable ();
+    if (page->status == FRAME)
+    {
+      intr_set_level (old_level);
+      return;
+    } else if (page->status == SWAP)
+    {
+      struct swapslot *slot = (struct swapslot *) page->data;
+      sema_down (&slot->sema);
+      intr_set_level (old_level);
+      if (page->data == NULL)
+        return;
+    } else
+    {
+      intr_set_level (old_level);
+    }
     bool shared = false;
     struct frame *frame = alloc_frame (page, page->writable, page->node, &shared);
     if (!frame)

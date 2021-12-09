@@ -10,6 +10,7 @@ struct swapslot{
   block_sector_t sector;
   struct list page_list;
   int num_refs;
+  struct semaphore sema;
 };
 
 struct swap {

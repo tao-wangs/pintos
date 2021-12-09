@@ -12,7 +12,7 @@
 void exception_init (void);
 void exception_print_stats (void);
 
-bool is_a_stack_access (bool write, void *fault_addr);
+bool is_a_stack_access (void *fault_addr);
 void grow_the_stack (void *fault_addr);
 
 #endif /* userprog/exception.h */

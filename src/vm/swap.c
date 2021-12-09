@@ -28,6 +28,7 @@ void swaptable_init(void){
     }
     slot->sector = i; //might have to be offset by 1
     list_init (&slot->page_list);
+    sema_init (&slot->sema, 1);
     list_push_back(&table2.slots, &slot->elem);
   }
 }
@@ -90,6 +91,7 @@ evict_to_swap(struct frame *frame)
     lock_release (&e->lock);
     e = next;
   }
+  free_slot->sema.value = 1;
   lock_release (&frame->page_list.head.lock);
   lock_release (&frame->page_list.tail.lock);
   lock_release(&swap_lock);
@@ -124,6 +126,10 @@ void get_from_swap(struct page *page, struct frame *frame){
     locklist_push_back (&frame->page_list, &new_page->page_elem);
     lock_release (&new_page->page_elem.lock); 
     e = next;
+  }
+  for (int i = 0; i < free_slot->num_refs; ++i)
+  {
+    sema_up (&free_slot->sema);
   }
   frame->num_refs = free_slot->num_refs;
   lock_release(&swap_lock);
