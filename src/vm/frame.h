@@ -29,10 +29,8 @@ struct frame *alloc_frame (struct page *page, bool writable, struct inode *exe, 
 
 struct frame *locate_frame (void *page, struct inode *node); 
 
-struct frame *find_free_frame ();
+struct frame *find_free_frame (void);
 
 void free_frame (void *kpage);
-
-void size();
 
 #endif /* vm/frame.h */

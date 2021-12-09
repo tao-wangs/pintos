@@ -150,10 +150,7 @@ page_fault (struct intr_frame *f)
   /* Turn interrupts back on (they were only off so that we could
      be assured of reading CR2 before it changed). */
   intr_enable ();
-  //printf ("page fault at %p\n", fault_addr);
-  if (fault_addr == -1)
-    printf ("break now!\n");
-
+ 
   /* Count page faults. */
   page_fault_cnt++;
 
@@ -231,7 +228,6 @@ page_fault (struct intr_frame *f)
         page->node = file_get_inode (fdata->file);
         free (fdata);
         page->data = NULL;
-        //hex_dump (page->addr, page->addr, 4096, true);
         break;
       }
       case ZERO:
@@ -243,7 +239,6 @@ page_fault (struct intr_frame *f)
   } else {
     if (user)
     {
-      // printf ("User page fault!\n");
       exit (-1);
     } else
     {
@@ -252,51 +247,21 @@ page_fault (struct intr_frame *f)
     }
   }
 }
- /*
-   1. Locate the page that faulted in the supplemental page table. If the memory reference is
-   valid, use the supplemental page table entry to locate the data that goes in the page, which
-   might be in the file system, or in a swap slot, or it might simply be an all-zero page. When
-   you implement sharing, the page’s data might even already be in a page frame, but not in
-   the page table.
-   
-   If the supplemental page table indicates that the user process should not expect any data
-   at the address it was trying to access, or if the page lies within kernel virtual memory, or if
-   the access is an attempt to write to a read-only page, then the access is invalid. Any invalid
-   access terminates the process and thereby frees all of its resources.
-   
-   2. Obtain a frame to store the page. See Section 5.1.5 [Managing the Frame Table], page 44,
-   for details.
-   When you implement sharing, the data you need may already be in a frame, in which case
-   you must be able to locate that frame.
-   
-   3. Fetch the data into the frame, by reading it from the file system or swap, zeroing it, etc.
-   When you implement sharing, the page you need may already be in a frame, in which case
-   no action is necessary in this step.
-   
-   4. Point the page table entry for the faulting virtual address to the frame. You can use the
-   functions in ‘userprog/pagedir.c’. */
 
+/* Determines whether fault_addr is a stack access or not. */
 bool
 is_a_stack_access (void *fault_addr) {
    return (fault_addr < PHYS_BASE && (fault_addr >= (thread_current ()->esp - 32)));
 }
 
+/* Grow the stack. */
 void
 grow_the_stack (void *fault_addr) {
    struct thread *current_thread = thread_current ();
 
-   /* You should impose some absolute limit on stack size, on
-      many GNU/Linux systems, the default limit is 8 MB. Needed 
-      to cast the esp, as pointer arithmetic is not possible
-      on void pointers. */
-
    if ((uint32_t) (current_thread + PGSIZE) - (uint32_t) current_thread->esp >= MAX_STACK_SIZE) {
       exit(-1);
    }
-
-   /* We are using this to add our new page to the page table of the current
-      thread. The add_page function will handle the rounding down of the stack 
-      pointer for us, so we do not need to explicitly do it. */
       
    add_page(fault_addr, NULL, ZERO, current_thread->page_table, true);
 

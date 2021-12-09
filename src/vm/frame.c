@@ -73,7 +73,7 @@ locate_frame (void *page, struct inode *node)
 
 /* Allocates a page to a frame. */
 struct frame *
-find_free_frame () 
+find_free_frame (void) 
 {
   for (struct locklist_elem *e = locklist_begin (&table.frames);
        e != locklist_end (&table.frames);
